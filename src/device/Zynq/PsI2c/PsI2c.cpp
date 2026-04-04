@@ -14,6 +14,7 @@
 //===========================================================================//
 
 #include <cstdio>
+#include <cstring>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -27,6 +28,7 @@
 PsI2c::PsI2c( uint8_t bus_index, const Logger& logger )
     : fd_        ( -1        )
     , bus_index_ ( bus_index )
+    , sim_       ( false     )
     , logger_    ( logger    )
 {
     char devpath[32];
@@ -35,7 +37,8 @@ PsI2c::PsI2c( uint8_t bus_index, const Logger& logger )
     fd_ = open( devpath, O_RDWR );
     if ( fd_ < 0 )
     {
-        logger_.log_error( "PsI2c: failed to open %s", devpath );
+        sim_ = true;
+        logger_.log_debug( "PsI2c %d: simulation mode (no %s)", bus_index_, devpath );
     }
 }
 
@@ -53,6 +56,11 @@ PsI2c::~PsI2c()
 
 int PsI2c::write( uint8_t slave_addr, const uint8_t* buffer, uint16_t length )
 {
+    if ( sim_ )
+    {
+        return 0;
+    }
+
     std::lock_guard<std::mutex> lock( mutex_ );
 
     struct i2c_msg msg;
@@ -78,6 +86,12 @@ int PsI2c::write( uint8_t slave_addr, const uint8_t* buffer, uint16_t length )
 
 int PsI2c::read( uint8_t slave_addr, uint8_t* buffer, uint16_t length )
 {
+    if ( sim_ )
+    {
+        std::memset( buffer, 0, length );
+        return 0;
+    }
+
     std::lock_guard<std::mutex> lock( mutex_ );
 
     struct i2c_msg msg;

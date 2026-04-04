@@ -27,10 +27,16 @@ Register::Register( uintptr_t base_addr, size_t map_size )
     : base_     ( nullptr   )
     , fd_       ( -1        )
     , map_size_ ( map_size  )
+    , sim_      ( false     )
 {
     fd_ = open("/dev/mem", O_RDWR | O_SYNC);
     if (fd_ < 0) {
-        perror("Register: failed to open /dev/mem");
+        ///< Fall back to simulation mode
+        size_t nwords = map_size_ / sizeof(uint32_t);
+        sim_mem_.resize( nwords, 0 );
+        base_ = sim_mem_.data();
+        sim_ = true;
+        printf("Register: simulation mode (heap-backed, %zu words)\n", nwords);
         return;
     }
 
@@ -46,6 +52,13 @@ Register::Register( uintptr_t base_addr, size_t map_size )
         perror("Register: mmap failed");
         close(fd_);
         fd_ = -1;
+
+        ///< Fall back to simulation mode
+        size_t nwords = map_size_ / sizeof(uint32_t);
+        sim_mem_.resize( nwords, 0 );
+        base_ = sim_mem_.data();
+        sim_ = true;
+        printf("Register: simulation mode (heap-backed, %zu words)\n", nwords);
         return;
     }
 
@@ -56,7 +69,7 @@ Register::Register( uintptr_t base_addr, size_t map_size )
 
 Register::~Register()
 {
-    if (base_ && base_ != MAP_FAILED) {
+    if (!sim_ && base_ && base_ != MAP_FAILED) {
         munmap(const_cast<uint32_t*>(base_), map_size_);
     }
     if (fd_ >= 0) {

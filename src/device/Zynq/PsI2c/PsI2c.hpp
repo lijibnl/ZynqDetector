@@ -32,6 +32,11 @@ public:
     PsI2c& operator=(const PsI2c&) = delete;
 
     /**
+     * @brief True if using simulation mode (no /dev/i2c-N).
+     */
+    bool is_sim() const { return sim_; }
+
+    /**
      * @brief Write data to an I2C slave.
      * @param slave_addr  7-bit I2C address.
      * @param buffer      Data to write.
@@ -52,6 +57,7 @@ public:
 private:
     int            fd_;
     uint8_t        bus_index_;
+    bool           sim_;
     std::mutex     mutex_;
     const Logger&  logger_;
 };
