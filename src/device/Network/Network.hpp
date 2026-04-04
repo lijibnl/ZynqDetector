@@ -1,142 +1,77 @@
 /**
  * @file Network.hpp
- * @brief Class template definition of `Network`.
+ * @brief Class template definition of `Network` — Linux version.
+ * @details
+ * Transport-agnostic CRTP base. Derived classes (GermaniumZMQ,
+ * GermaniumUDP, etc.) implement the actual wire protocol.
+ *
+ * Replaces the FreeRTOS lwIP version.
  *
  * @author Ji Li <liji@bnl.gov>
- * @date 08/11/2025
+ * @date 04/04/2026
  * @copyright
- * Copyright (c) 2025 Brookhaven National Laboratory
+ * Copyright (c) 2026 Brookhaven National Laboratory
  * @license BSD 3-Clause License. See LICENSE file for details.
  */
 #pragma once
 
 //===========================================================================//
 
-#include <cstdint>
-#include <memory>
-#include <atomic>
 #include <functional>
-#include <any>
-#include <map>
-
-extern "C" {
-#include "lwip/sockets.h"
-#include "lwip/netif.h"
-#include "lwip/inet.h"
-
-#include "netif/xadapter.h"
-#include "errno.h"
-#include "xparameters.h"
-}
 
 #include "Logger.hpp"
+#include "DeviceMsg.hpp"
 
 //===========================================================================//
 
 template < typename DerivedNetwork >
 class Network
 {
-
 public:
 
-    ///< UDP and message
-    static constexpr uint32_t UDP_PORT        = 0x7000;
-    static constexpr uint32_t UDP_REQ_MSG_ID  = 0xCAFE;
-    static constexpr uint32_t UDP_RESP_MSG_ID = 0xBEEF;
+    using CommandHandler = std::function<void(DeviceMsg&)>;
+
+    explicit Network( const Logger& logger );
+
     //------------------------------
-    // UDP message
+    // CRTP helper
     //------------------------------
-    static constexpr uint16_t MAX_UDP_MSG_LENG = 4096;
-    static constexpr uint16_t MAX_UDP_MSG_DATA_LENG = MAX_UDP_MSG_LENG - 4; // length of message data in bytes
-
-    struct UdpReqMsg
-    {   
-        uint16_t                           id; 
-        uint16_t                           op;
-        DerivedNetwork::UdpReqMsgPayload   payload;
-    };  
-    using UdpRxMsg = UdpReqMsg;
-
-    struct UdpRespMsg
-    {
-        uint16_t                           id;
-        uint16_t                           op;
-        DerivedNetwork::UdpRespMsgPayload  payload;
-    };
-    using UdpTxMsg = UdpRespMsg;
-
-
-    explicit Network( const Logger& logger  );
+    auto& derived()             { return static_cast<DerivedNetwork&>(*this); }
+    const auto& derived() const { return static_cast<const DerivedNetwork&>(*this); }
 
     /**
-     * @brief Network initialization
+     * @brief Network initialization (transport-specific).
      */
     void network_init();
 
     /**
-     * @brief Create network tasks (Rx/Tx)
+     * @brief Create network tasks / threads.
      */
     void create_network_tasks();
 
-private:
+    /**
+     * @brief Run the command loop (blocks).
+     * @param handler  Callback for each received command.
+     *
+     * The derived class implements run_special() which:
+     *   1. Receives a wire message
+     *   2. Decodes it into DeviceMsg
+     *   3. Calls handler(msg)
+     *   4. Encodes the (possibly modified) DeviceMsg as a reply
+     *   5. Sends the reply
+     *   6. Loops
+     */
+    void run(CommandHandler handler);
+
+    /**
+     * @brief Signal the network loop to stop.
+     */
+    void stop();
+
+protected:
     const Logger& logger_;
-
-    struct netif netif_;
-    struct sockaddr_in local_addr_;
-    int32_t udp_socket_;
-    uint8_t mac_addr_[6];
-    alignas(64) std::atomic<uint32_t> remote_ip_addr_;
-
-    static constexpr UBaseType_t  RX_TASK_PRIORITY   = 10;
-    static constexpr uint32_t     RX_TASK_STACK_SIZE = 1000;
-    StaticTask_t                  rx_task_tcb_;
-    StackType_t                   rx_task_stack_[RX_TASK_STACK_SIZE];
-    TaskConfig                    rx_task_cfg_;
-
-    static constexpr uint32_t     TX_TASK_PRIORITY   = 9;
-    static constexpr uint32_t     TX_TASK_STACK_SIZE = 1000;
-    StaticTask_t                  tx_task_tcb_;
-    StackType_t                   tx_task_stack_[RX_TASK_STACK_SIZE];
-    TaskConfig                    tx_task_cfg_;
-
-    TaskHandle_t udp_rx_task_handle_;
-    TaskHandle_t udp_tx_task_handle_;
-    
-    /**
-     * @brief Read network configuration parameters from file.
-     */
-    void read_network_config( const std::string& filename );
-
-    /**
-     * @brief Check if TCP/IP initialization is done.
-     */
-    static void tcpip_init_done( void *arg );
-
-    /**
-     * @brief Convert a string to an IP/MAC address.
-     */
-    bool string_to_addr( const std::string& addr_str, uint8_t* addr );
-
-    /**
-     * @brief UDP Rx task function.
-     */
-    void udp_rx_task();
-    
-    /**
-     * @brief UDP Tx task function.
-     */
-    void udp_tx_task();
-
-    /**
-     * @brief UDP Rx message process.
-     */
-    void rx_msg_proc( const UdpRxMsg& msg );
-
-    /**
-     * @brief UDP Tx message process.
-     */
-    size_t tx_msg_proc( UdpTxMsg& msg );
-
 };
- 
- #include "Network.tpp"
+
+//===========================================================================//
+
+#include "Network.tpp"

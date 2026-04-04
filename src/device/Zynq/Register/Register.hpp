@@ -1,11 +1,14 @@
 /**
  * @file Register.hpp
- * @brief Class definition of `Register`.
+ * @brief Class definition of `Register` — Linux version.
+ * @details
+ * FPGA register access via /dev/mem mmap + std::mutex.
+ * Replaces the FreeRTOS version (xSemaphore + task).
  *
  * @author Ji Li <liji@bnl.gov>
- * @date 08/11/2025
+ * @date 04/04/2026
  * @copyright
- * Copyright (c) 2025 Brookhaven National Laboratory
+ * Copyright (c) 2026 Brookhaven National Laboratory
  * @license BSD 3-Clause License. See LICENSE file for details.
  */
 #pragma once
@@ -13,42 +16,48 @@
 //===========================================================================//
 
 #include <cstdint>
-#include <memory>
-
-#include "FreeRTOS.h"
-#include "semphr.h"
-
-#include "queue.hpp"
-#include "task_wrap.hpp"
-
-//===========================================================================//
-
-class Logger;
+#include <cstddef>
+#include <mutex>
 
 //===========================================================================//
 
 class Register
 {
 public:
+    Register( uintptr_t base_addr, size_t map_size );
+    ~Register();
 
-    Register( uintptr_t             base_addr
-            , const QueueHandle_t   single_access_req_queue
-            , const QueueHandle_t   single_access_resp_queue
-            , const Logger&         logger
-            );
+    Register(const Register&) = delete;
+    Register& operator=(const Register&) = delete;
 
     /**
-     * @brief Register single access.
+     * @brief Single register write (mutex-protected).
      */
-    void write( uint16_t offset, uint32_t value );
-    uint32_t read( uint16_t offset );
+    void write( uint16_t word_offset, uint32_t value );
 
     /**
-     * @brief Function set to perform multiple access.
+     * @brief Single register read (mutex-protected).
+     */
+    uint32_t read( uint16_t word_offset );
+
+    /**
+     * @brief Start a multi-access sequence (acquires mutex).
      */
     void multi_access_start();
-    void multi_access_write( uint16_t offset, uint32_t value );
-    uint32_t multi_access_read( uint16_t offset );
+
+    /**
+     * @brief Write during a multi-access sequence (no mutex).
+     */
+    void multi_access_write( uint16_t word_offset, uint32_t value );
+
+    /**
+     * @brief Read during a multi-access sequence (no mutex).
+     */
+    uint32_t multi_access_read( uint16_t word_offset );
+
+    /**
+     * @brief End a multi-access sequence (releases mutex).
+     */
     void multi_access_end();
 
     /**
@@ -56,33 +65,11 @@ public:
      */
     void set_status( uint32_t status );
 
-    /**
-     * @brief Create register access task.
-     */
-    void create_register_access_tasks();
-
 private:
-    uintptr_t         base_addr_;
-    xSemaphoreHandle  mutex_;
-    QueueHandle_t     single_access_req_queue_;
-    QueueHandle_t     single_access_resp_queue_;
-    const Logger&     logger_;
-
-    static constexpr UBaseType_t TASK_PRIORITY   = 5;
-    static constexpr uint32_t    TASK_STACK_SIZE = 1000;
-    StaticTask_t                 task_tcb_;
-    StackType_t                  task_stack_[TASK_STACK_SIZE];
-    TaskConfig                   task_cfg_;
-
-    /**
-     * @brief Create register single access task.
-     */
-    void create_register_single_access_task();
-
-    /**
-     * @brief Register single access task function.
-     */
-    void single_access_task();
+    volatile uint32_t*  base_;
+    int                 fd_;
+    size_t              map_size_;
+    std::mutex          mutex_;
 };
 
 //===========================================================================//

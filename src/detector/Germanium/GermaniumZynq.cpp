@@ -1,232 +1,63 @@
-//#include <atomic>
-//#include <chrono>
-//#include <thread>
+/**
+ * @file GermaniumZynq.cpp
+ * @brief Member function definitions of `GermaniumZynq` — Linux version.
+ *
+ * @author Ji Li <liji@bnl.gov>
+ * @date 04/04/2026
+ * @copyright
+ * Copyright (c) 2026 Brookhaven National Laboratory
+ * @license BSD 3-Clause License. See LICENSE file for details.
+ */
 
-#ifdef __LINUX__
-#include <sys/mman.h>
-#include <fcntl.h>  // For O_* constants
-#include <unistd.h> // For close()
-#endif
+//===========================================================================//
 
-#include "xparameters.h"
-
-#include "Register.hpp"
-#include "Zynq.hpp"
 #include "GermaniumZynq.hpp"
 
+//===========================================================================//
 
-//###################################################
-// Definitions for FreeRTOS
-//###################################################
-#ifdef __FREERTOS__
-
-
-//-----------------------------------------
-GermaniumZynq::GermaniumZynq
-    ( const QueueHandle_t              register_single_access_req_queue
-    , const QueueHandle_t              register_single_access_resp_queue
-    , const QueueHandle_t              psi2c0_req_queue
-    //, const QueueHandle_t              psi2c0_resp_queue
-    , const QueueHandle_t              psi2c1_req_queue
-    , const QueueHandle_t              psi2c_resp_queue
-    , const QueueHandle_t              psxadc_req_queue
-    , const QueueHandle_t              psxadc_resp_queue
-    , const Logger&                    logger
-    )
-    : Zynq< GermaniumZynq >
-          ( REG_BASE_ADDR
-          , register_single_access_req_queue
-          , register_single_access_resp_queue
-          , logger
-          )
-    , base_  ( static_cast<Zynq<GermaniumZynq>*>(this) )
-    , psi2c0_( std::make_unique<PsI2c>( 0
-                                      , "psi2c0"
-                                      , PSI2C0_BASE_ADDR
-                                      , PSI2C0_CLK_FREQ
-                                      , psi2c0_req_queue
-                                      , psi2c_resp_queue
-                                      , logger
-                                      )
-             )
-    , psi2c1_( std::make_unique<PsI2c>( 1
-                                      , "psi2c1"
-                                      , PSI2C1_BASE_ADDR
-                                      , PSI2C1_CLK_FREQ
-                                      , psi2c1_req_queue
-                                      , psi2c_resp_queue
-                                      , logger
-                                      )
-             )
-    , psxadc_( std::make_unique<PsXadc>( "psxadc"
-                                       , psxadc_req_queue
-                                       , psxadc_resp_queue
-                                       , logger
-                                       )
-             )
-    , logger_ ( logger )
+GermaniumZynq::GermaniumZynq( const Logger& logger )
+    : Zynq<GermaniumZynq>( REG_BASE_ADDR, REG_MAP_SIZE, logger )
+    , i2c0_        ( 0, logger )
+    , i2c1_        ( 1, logger )
+    , i2c0_worker_ ( "I2C0" )
+    , i2c1_worker_ ( "I2C1" )
+    , xadc_worker_ ( "XADC" )
+    , logger_      ( logger )
 {}
 
-
+//===========================================================================//
 
 void GermaniumZynq::create_device_access_tasks_special()
 {
-    psi2c0_->create_psi2c_task();
-    psi2c1_->create_psi2c_task();
-    psxadc_->create_psxadc_task();
+    ///< I2C bus 0 worker: Tmp100 ×3
+    i2c0_worker_.set_handler(
+        [this](uint32_t addr, uint32_t value) -> uint32_t {
+            ///< addr encodes slave address; value encodes operation
+            ///< Specific dispatch handled by GermaniumDetector
+            (void)addr; (void)value;
+            return 0;
+        }
+    );
+    i2c0_worker_.start();
+
+    ///< I2C bus 1 worker: Dac7678, Ltc2309 ×2
+    i2c1_worker_.set_handler(
+        [this](uint32_t addr, uint32_t value) -> uint32_t {
+            (void)addr; (void)value;
+            return 0;
+        }
+    );
+    i2c1_worker_.start();
+
+    ///< XADC worker: on-chip temperature/voltage via /sys/bus/iio
+    xadc_worker_.set_handler(
+        [this](uint32_t addr, uint32_t value) -> uint32_t {
+            (void)addr; (void)value;
+            ///< TODO: read /sys/bus/iio/devices/iio:device0/...
+            return 0;
+        }
+    );
+    xadc_worker_.start();
 }
 
-/*
-auto Zynq::add_pl_i2c( const std::string& name
-                     , uint32_t instr_reg
-                     , uint32_t wr_data_reg
-                     , uint32_t rd_data_reg )
-{
-    pl_i2cs_.emplace_back( std::piecewise_construct,
-                      std::forward_as_tuple( name ),
-                      std::forward_as_tuple( reg_, instr_reg, wr_data_reg, rd_data_reg ) );
-}
-
-void Zynq::add_pl_spi( const std::string& name
-                     , uint32_t instr_reg
-                     , uint32_t wr_data_reg
-                     , uint32_t rd_data_reg )
-{
-    pl_spis_.emplace( std::piecewise_construct
-                    , std::forward_as_tuple( name )
-                    , std::forward_as_tuple( reg_, instr_reg, wr_data_reg, rd_data_reg ) );
-}
-*/
-//auto GermaniumZynq::add_psi2c_interface( uint32_t bus_index )
-//{
-//    return ps_i2cs_.emplace_back( bus_index );
-//}
-
-//I2cInterface* Zynq::get_pli2c_interface( const std::string& name )
-//{
-//    auto it = pl_i2c_interfaces_.find( name );
-//    return ( it !=pl_ i2c_interfaces_.end() ) ? &(it->second) : nullptr;
-//}
-//
-//SpiInterface* Zynq::get_plspi_interface(const std::string& name)
-//{
-//    auto it = pl_spi_interfaces_.find( name );
-//    return ( it != pl_spi_interfaces_.end() ) ? &(it->second) : nullptr;
-//}
-
-//=========================================
-#endif
-
-
-
-#ifdef __LINUX__
-//=========================================
-// Definitions for Linux
-//=========================================
-Zynq::Zynq(uint32_t axi_base_addr)
-    : axi_base_addr( axi_base_addr )
-    , reg_         ( nullptr       )
-    , reg_size     ( 0x10000       )
-{
-    int fd = open("/dev/mem",O_RDWR | O_SYNC);
-    if (fd == -1)
-    {
-        throw std::runtime_error("Failed to open /dev/mem. Try root.");
-    }
-
-    try
-    {
-        //reg_size = getpagesize();
-        reg_ = static_cast<uint32_t *>( mmap( nullptr
-                                            , reg_size
-                                            , PROT_READ | PROT_WRITE
-                                            , MAP_SHARED
-                                            , fd
-                                            , axi_base_addr
-                                            )
-                                      );
-    }
-    catch (const std::exception& e)
-    {
-        close(fd);
-        throw std::runtime_error( "Memory mapping failed: " + std::string( e.what())  );
-    }
-
-
-    close(fd);
-    
-    if(reg == MAP_FAILED)
-    {
-        throw std::runtime_error( "Memory mapping failed" );
-    }
-
-    trace_reg( __func__
-             , ": Zynq object created at 0x"
-             , std::hex, static_cast<void*>(reg), std::dec );
-}
-
-//-----------------------------------------
-
-Zynq::~Zynq()
-{
-    if (reg != nullptr)
-    {
-        munmap( reg, reg_size );
-    }
-    trace_reg( __func__, ": Zynq object destructed." );
-}
-
-//-----------------------------------------
-
-void Zynq::reg_wr( size_t offset, uint32_t value )
-{
-    if (offset % sizeof(uint32_t) != 0) {
-        throw std::runtime_error("Offset must be aligned to register size");
-    }
-
-    volatile uint32_t *registerPtr = reg + offset / sizeof(uint32_t);
-    while( reg_lock.exchange( true, std::memory_order_acquire) );
-    *registerPtr = value;
-    reg_lock.store( false, std::memory_order_release );
-
-
-    trace_reg( __func__,
-               ": write 0x", std::hex, value,
-               " to 0x", offset,
-               " (0x",
-               static_cast<void*>(const_cast<uint32_t*>(registerPtr)),
-               std::dec
-             );
-
-    reg_rd(offset);
-}
-
-//-----------------------------------------
-
-uint32_t Zynq::reg_rd(size_t offset)
-{
-    uint32_t val;
-    if (offset % sizeof(uint32_t) != 0)
-    {
-        throw std::runtime_error("Offset must be aligned to register size");
-    }
-
-    volatile uint32_t *registerPtr = reg + offset / sizeof(uint32_t);
-    while( reg_lock.exchange( true, std::memory_order_acquire) );
-    val = *registerPtr;
-    reg_lock.store( false, std::memory_order_release );
-
-    trace_reg( __func__, ": read 0x",
-               std::hex, val,
-               " @ 0x", offset,
-               " (0x",
-               static_cast<void*>(const_cast<uint32_t*>(registerPtr)),
-               std::dec
-             );
-
-    //io_wait();
-    return val;
-}
-
-//=========================================
-#endif
+//===========================================================================//

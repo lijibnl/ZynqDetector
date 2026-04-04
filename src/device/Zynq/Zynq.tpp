@@ -1,20 +1,16 @@
 /**
  * @file Zynq.tpp
- * @brief Member function definitions of `Zynq`.
+ * @brief Member function definitions of `Zynq` — Linux version.
  *
  * @author Ji Li <liji@bnl.gov>
- * @date 08/11/2025
+ * @date 04/04/2026
  * @copyright
- * Copyright (c) 2025 Brookhaven National Laboratory
+ * Copyright (c) 2026 Brookhaven National Laboratory
  * @license BSD 3-Clause License. See LICENSE file for details.
  */
-
-//===========================================================================//
 #pragma once
 
-#include <atomic>
-#include <chrono>
-#include <thread>
+//===========================================================================//
 
 #include "Register.hpp"
 
@@ -22,43 +18,45 @@
 
 /**
  * @brief Zynq constructor.
- * @param base_addr Base address of the register.
- * @param register_single_access_req_queue Queue for pass register single
- *                                         access requests.
- * @param register_single_access_reisp_queue Queue for pass register single
- *                                           access responses.
- * @param logger Reference to the logger.
+ * @param base_addr  FPGA register base address for mmap.
+ * @param map_size   Size of the mmap region.
+ * @param logger     Reference to the logger.
  */
 template < typename DerivedZynq >
 Zynq<DerivedZynq>::Zynq
-    ( uintptr_t            base_addr
-    , const QueueHandle_t  register_single_access_req_queue
-    , const QueueHandle_t  register_single_access_resp_queue
-    , const Logger&        logger
+    ( uintptr_t     base_addr
+    , size_t        map_size
+    , const Logger& logger
     )
-    : reg_ ( std::make_unique<Register>( base_addr
-                                       , register_single_access_req_queue
-                                       , register_single_access_resp_queue
-                                       , logger
-                                       )
-           )
-    , register_single_access_req_queue_  ( register_single_access_req_queue  )
-    , register_single_access_resp_queue_ ( register_single_access_resp_queue )
-    , logger_                            ( logger                            )
+    : reg_              ( std::make_unique<Register>( base_addr, map_size ) )
+    , register_worker_  ( "REG" )
+    , logger_           ( logger )
 {}
 
 //===========================================================================//
 
 /**
- * @brief Create Zynq-associated device access tasks.
+ * @brief Create device access worker threads.
  */
 template < typename DerivedZynq >
 void Zynq<DerivedZynq>::create_device_access_tasks()
 {
-    reg_->create_register_access_tasks();
+    ///< Set up register worker handler
+    register_worker_.set_handler(
+        [this](uint32_t addr, uint32_t value) -> uint32_t {
+            ///< Bit 15 set = read, else write (matches FreeRTOS convention)
+            if (addr & 0x8000) {
+                return reg_->read(addr & 0x7FFF);
+            } else {
+                reg_->write(static_cast<uint16_t>(addr), value);
+                return 0;
+            }
+        }
+    );
+    register_worker_.start();
 
-    static_cast<DerivedZynq*>(this)->create_device_access_tasks_special();
+    ///< Derived class creates its own workers (I2C, XADC, etc.)
+    derived().create_device_access_tasks_special();
 }
 
 //===========================================================================//
-

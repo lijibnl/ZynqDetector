@@ -1,76 +1,63 @@
+/**
+ * @file GermaniumZynq.hpp
+ * @brief Class definition of `GermaniumZynq` — Linux version.
+ * @details
+ * Board-level hardware description for the Germanium detector.
+ * Owns PsI2c buses and XADC, and their DeviceWorker threads.
+ *
+ * @author Ji Li <liji@bnl.gov>
+ * @date 04/04/2026
+ * @copyright
+ * Copyright (c) 2026 Brookhaven National Laboratory
+ * @license BSD 3-Clause License. See LICENSE file for details.
+ */
 #pragma once
 
-#include <atomic>
-#include <map>
-#include <vector>
-#include <string>
+//===========================================================================//
+
 #include <memory>
 
-#include "FreeRTOS.h"
-#include "semphr.h"
-
 #include "Logger.hpp"
-
+#include "Zynq.hpp"
 #include "PsI2c.hpp"
-#include "PsXadc.hpp"
-//#include "PlInterface.hpp"
+#include "DeviceWorker.hpp"
 
-#define __FREERTOS__
-//#define __LINUX__
+//===========================================================================//
 
-#define REG_VER        0x0
-
-
-
-class GermaniumDetector;
-
-//=========================================
-// Zynq class
-//=========================================
 class GermaniumZynq : public Zynq<GermaniumZynq>
 {
-
 public:
-    GermaniumZynq( const QueueHandle_t    register_single_access_req_queue
-                 , const QueueHandle_t    register_single_access_resp_queue
-                 , const QueueHandle_t    psi2c0_req_queue
-                 //, const QueueHandle_t    psi2c0_resp_queue
-                 , const QueueHandle_t    psi2c1_req_queue
-                 , const QueueHandle_t    psi2c_resp_queue
-                 //, const QueueHandle_t    psi2c1_resp_queue
-                 , const QueueHandle_t    psxadc_req_queue
-                 , const QueueHandle_t    psxadc_resp_queue
-                 , const Logger&          logger
-                 );
+    GermaniumZynq( const Logger& logger );
 
-    Zynq<GermaniumZynq>* base_;
-
-//    GermaniumZynq( uintptr_t base_addr );
-
-    //auto add_pl_i2c( const std::string& name, uint32_t instr_reg, uint32_t data_reg );
-    //auto add_pl_spi( const std::string& name, uint32_t instr_reg, uint32_t data_reg );
-
-    //auto add_ps_i2c( uint8_t bus_index );
-
-    //PlI2cInterface* get_pl_i2c_interface( const std::string& name );
-    //PlSpiInterface* get_pl_spi_interface( const std::string& name );
-
+    /**
+     * @brief CRTP hook — create I2C and XADC worker threads.
+     */
     void create_device_access_tasks_special();
 
-protected:
-    //Register reg_;
-    std::unique_ptr<PsI2c>     psi2c0_;
-    std::unique_ptr<PsI2c>     psi2c1_;
-    std::unique_ptr<PsXadc>    psxadc_;
-    const Logger&              logger_;
+    /**
+     * @brief Access I2C buses.
+     */
+    PsI2c& i2c0() { return i2c0_; }
+    PsI2c& i2c1() { return i2c1_; }
 
-    static constexpr uintptr_t REG_BASE_ADDR    = XPAR_IOBUS_0_BASEADDR;
-    static constexpr uintptr_t PSI2C0_BASE_ADDR = XPAR_I2C0_BASEADDR;
-    static constexpr uintptr_t PSI2C1_BASE_ADDR = XPAR_I2C1_BASEADDR;
-    static constexpr uint32_t  PSI2C0_CLK_FREQ  = XPAR_I2C0_CLOCK_FREQ;
-    static constexpr uint32_t  PSI2C1_CLK_FREQ  = XPAR_I2C1_CLOCK_FREQ;
+    /**
+     * @brief Access per-bus workers.
+     */
+    DeviceWorker& i2c0_worker() { return i2c0_worker_; }
+    DeviceWorker& i2c1_worker() { return i2c1_worker_; }
+    DeviceWorker& xadc_worker() { return xadc_worker_; }
 
-    void device_access_tasks();
+    ///< Board addresses
+    static constexpr uintptr_t REG_BASE_ADDR = 0x43C00000;
+    static constexpr size_t    REG_MAP_SIZE  = 0x10000;
 
+private:
+    PsI2c          i2c0_;
+    PsI2c          i2c1_;
+    DeviceWorker   i2c0_worker_;
+    DeviceWorker   i2c1_worker_;
+    DeviceWorker   xadc_worker_;
+    const Logger&  logger_;
 };
-//=========================================
+
+//===========================================================================//

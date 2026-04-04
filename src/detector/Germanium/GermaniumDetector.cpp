@@ -1,236 +1,124 @@
 /**
  * @file GermaniumDetector.cpp
- * @brief Member function definitions of `GermaniumDetector`.
+ * @brief Member function definitions of `GermaniumDetector` — Linux version.
  *
  * @author Ji Li <liji@bnl.gov>
- * @date 08/11/2025
+ * @date 04/04/2026
  * @copyright
- * Copyright (c) 2025 Brookhaven National Laboratory
+ * Copyright (c) 2026 Brookhaven National Laboratory
  * @license BSD 3-Clause License. See LICENSE file for details.
  */
 
 //===========================================================================//
 
-// C++ includes
-#include <iterator>
-#include <portmacro.h>
-#include <memory>
-
-// FreeRTOS includes
-#include "FreeRTOS.h"
-//#include "msg.hpp"
-#include "task.h"
-#include "queue.h"
-#include "timers.h"
-
-// Xilinx includes
-#include "xil_printf.h"
-#include "xparameters.h"
-
-// Project includes
-#include "ZynqDetector.hpp"
 #include "GermaniumDetector.hpp"
-#include "GermaniumZynq.hpp"
-#include "GermaniumNetwork.hpp"
 
 //===========================================================================//
 
-//static TimerHandle_t xPollTimer = NULL;
-
-/**
- * @brief GermaniumDetector constructor
- */
 GermaniumDetector::GermaniumDetector()
-    : ZynqDetector< GermaniumDetector
-                  , GermaniumNetwork
-                  , GermaniumZynq
-                  >()
+    : ZynqDevice< GermaniumDetector
+                , GermaniumZMQ
+                , GermaniumZynq
+                >()
+    , mars_worker_( "MARS" )
 {
     create_queues();
 
     create_components();
 
-    network_->network_init();
- 
-    init_i2c_access_dispatch_map();
-    network_->register_i2c_handlers( i2c_access_dispatch_map_ );
+    network_init();
+
+    create_tasks();
 }
 
 //===========================================================================//
 
-/**
- * @briefe Create GermaniumDetectors specific components.
- * @details Zynq and Network objects are created here since only
- * GermaniumDetector/DerivedDetector knows how to properly create them.
- */
-void GermaniumDetector::create_components_special()
-{
-    auto z = std::make_unique<GermaniumZynq>( register_single_access_req_queue_
-                                            , register_single_access_resp_queue_
-                                            , psi2c_0_access_req_queue_
-                                            , psi2c_1_access_req_queue_
-                                            , psi2c_access_resp_queue_
-                                            , psxadc_access_req_queue_
-                                            , psxadc_access_resp_queue_
-                                            , this->logger_
-                                            );
-    this->set_zynq ( std::move(z) );
-
-    auto n = std::make_unique<GermaniumNetwork>( register_single_access_req_queue_
-                                               , register_single_access_resp_queue_
-                                               , psi2c_0_access_req_queue_
-                                               , psi2c_1_access_req_queue_
-                                               , psi2c_access_resp_queue_
-                                               , psxadc_access_req_queue_
-                                               , psxadc_access_resp_queue_
-                                               , ad9252_access_req_queue_
-                                               , mars_access_req_queue_
-                                               , zddm_access_req_queue_
-                                               , this->logger_
-                                               );
-    this->set_network ( std::move(n) );
-
-    ltc2309_0_ = std::make_unique<Ltc2309<PsI2c>>( /*psi2c_1_
-                                                 , */LTC2309_0_I2C_ADDR
-                                                 , psi2c_1_access_req_queue_
-                                                 , true
-                                                 , this->logger_
-                                                 );
-               
-    ltc2309_1_ = std::make_unique<Ltc2309<PsI2c>>( /*psi2c_1_
-                                                 , */LTC2309_1_I2C_ADDR
-                                                 , psi2c_1_access_req_queue_
-                                                 , true
-                                                 , this->logger_
-                                                 );
-               
-    dac7678_ = std::make_unique<Dac7678<PsI2c>>( /*psi2c_1_
-                                               , */DAC7678_I2C_ADDR
-                                               , psi2c_1_access_req_queue_
-                                               , this->logger_
-                                               );
-              
-    tmp100_0_ = std::make_unique<Tmp100<PsI2c>>( /*psi2c_0_
-                                               , */TMP100_0_I2C_ADDR
-                                               , psi2c_0_access_req_queue_
-                                               , this->logger_
-                                               );
-               
-    tmp100_1_ = std::make_unique<Tmp100<PsI2c>>( /*psi2c_0_
-                                               , */TMP100_1_I2C_ADDR
-                                               , psi2c_0_access_req_queue_
-                                               , this->logger_
-                                               );
-               
-    tmp100_2_ = std::make_unique<Tmp100<PsI2c>>( /*psi2c_0_
-                                                , */TMP100_2_I2C_ADDR
-                                                , psi2c_0_access_req_queue_
-                                                , this->logger_
-                                                );
-               
-    ad9252_ = std::make_unique<Ad9252<GermaniumNetwork>>( *this->zynq_->base_->reg_
-                                                        , ad9252_access_req_queue_
-                                                        );
-             
-    mars_ = std::make_unique<Mars<GermaniumNetwork>>( *this->zynq_->base_->reg_
-                                                    , mars_access_req_queue_
-                                                    );
-           
-    zddm_ = std::make_unique<Zddm<GermaniumNetwork>>( *this->zynq_->base_->reg_
-                                                    , zddm_access_req_queue_
-                                                    );
-}
-
-//===========================================================================//
-
-/**
- * @brief Initialize the dispatch maps for processing I2C components.
- */
-void GermaniumDetector::init_i2c_access_dispatch_map()
-{
-    for (const auto& [op, pair] : dac7678_instr_map_)
-    {
-        auto [dev, chan] = pair;
-    
-        i2c_access_dispatch_map_[op] = [dev, chan](const UdpRxMsg& msg)
-        {
-            dev->write( msg.payload.single_word.data, chan );
-        };
-    }
-    
-    for (const auto& [op, pair] : ltc2309_instr_map_)
-    {
-        auto [dev, chan] = pair;
-    
-        i2c_access_dispatch_map_[op] = [dev, chan](const UdpRxMsg& msg)
-                                       {
-                                           dev->read( msg.op, chan );
-                                       };
-    }
-    
-    for (const auto& [op, dev] : tmp100_instr_map_)
-    {
-        i2c_access_dispatch_map_[op] = [dev](const UdpRxMsg& msg)
-                                       {
-                                           dev->read( msg.op );
-                                       };
-    }
-}
-
-//===========================================================================//
-
-/**
- * @brief Create tasks for device access.
- */
-void GermaniumDetector::create_device_access_tasks_special()
-{
-    ad9252_->create_device_access_tasks();
-    mars_->create_device_access_tasks();
-    zddm_->create_device_access_tasks();
-
-}
-
-//===========================================================================//
-
-/**
- * @brief Create queues for GermaniumDetector.
- */
 void GermaniumDetector::create_queues_special()
 {
-  psi2c_0_access_req_queue_ = xQueueCreate( 5, sizeof(PsI2cAccessReq) );
-  psi2c_1_access_req_queue_ = xQueueCreate( 5, sizeof(PsI2cAccessReq) );
-  psxadc_access_req_queue_  = xQueueCreate( 5, sizeof(PsXadcAccessReq) );
-  ad9252_access_req_queue_  = xQueueCreate( 3, sizeof(Ad9252AccessReq) );
-  mars_access_req_queue_    = xQueueCreate( 3, sizeof(Ad9252AccessReq) );
-  zddm_access_req_queue_    = xQueueCreate( 3, sizeof(Ad9252AccessReq) );
-
-  psi2c_access_resp_queue_ = xQueueCreate( 10, sizeof(PsI2cAccessResp) );
-  psxadc_access_resp_queue_  = xQueueCreate( 5, sizeof(PsXadcAccessResp) );
+    ///< No additional queues — DeviceWorkers use ThreadQueue internally.
 }
 
 //===========================================================================//
 
-/**
- * @brief 1Hz polling function.
- */
-//void GermaniumDetector::polling_1s()
-//{
-//    UdpRxMsg msg;
-//    
-//    for ( auto iter : poll_list )
-//    {
-//        int instr = *iter;
-//        auto it = instr_map_.find(instr);
-//        if (it != instr_map_.end())
-//        {
-//            msg.op = instr;
-//            it->second(msg);  // Call the corresponding function
-//        }
-//        else
-//        {
-//            std::cout << "Unknown instruction: " << instr << '\n';
-//        }
-//    }
-//}
+void GermaniumDetector::create_components_special()
+{
+    auto z = std::make_unique<GermaniumZynq>( this->logger_ );
+    this->set_zynq( std::move(z) );
+
+    auto n = std::make_unique<GermaniumZMQ>( this->logger_ );
+    this->set_network( std::move(n) );
+
+    mars_ = std::make_unique<Mars>( this->zynq_->reg() );
+}
+
+//===========================================================================//
+
+void GermaniumDetector::create_tasks_special()
+{
+    ///< Mars worker — runs stuff_mars (long-running, holds register mutex)
+    mars_worker_.set_handler(
+        [this](uint32_t addr, uint32_t /*value*/) -> uint32_t {
+            ///< addr = chip_mask
+            mars_->load( static_cast<uint16_t>(addr) );
+            return 0;
+        }
+    );
+    mars_worker_.start();
+}
+
+//===========================================================================//
+
+void GermaniumDetector::handle_command( DeviceMsg& msg )
+{
+    switch ( msg.cmd )
+    {
+        case DeviceCmd::REG_READ:
+        {
+            ///< Submit read to register worker; bit 15 set = read convention
+            auto fut = zynq_->register_worker().submit( msg.addr | 0x8000, 0 );
+            msg.value = fut.get();
+            break;
+        }
+
+        case DeviceCmd::REG_WRITE:
+        {
+            ///< Submit write to register worker
+            auto fut = zynq_->register_worker().submit( msg.addr, msg.value );
+            fut.get();
+            break;
+        }
+
+        case DeviceCmd::SET_GLOBAL:
+        {
+            ///< Inline — just updates chipstr state (fast, no hardware I/O)
+            uint16_t chip_mask = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
+            uint16_t field_id  = static_cast<uint16_t>( msg.addr & 0xFFFF );
+            mars_->set_global_field( chip_mask, field_id, msg.value );
+            break;
+        }
+
+        case DeviceCmd::SET_CHANNEL:
+        {
+            ///< Inline — just updates chanstr state (fast, no hardware I/O)
+            uint16_t channel  = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
+            uint16_t field_id = static_cast<uint16_t>( msg.addr & 0xFFFF );
+            mars_->set_channel_field( channel, field_id, msg.value );
+            break;
+        }
+
+        case DeviceCmd::MARS_LOAD:
+        {
+            ///< Submit to mars_worker_ (long-running operation)
+            uint16_t chip_mask = static_cast<uint16_t>( msg.addr & 0xFFF );
+            auto fut = mars_worker_.submit( chip_mask, 0 );
+            fut.get();
+            break;
+        }
+
+        default:
+            logger_.log_warn( "GermaniumDetector: unknown cmd 0x%02X", msg.cmd );
+            break;
+    }
+}
 
 //===========================================================================//

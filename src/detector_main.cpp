@@ -1,29 +1,51 @@
 /**
  * @file detector_main.cpp
- * @brief Starting point of the program.
+ * @brief Starting point of the program — Linux version.
  * @details
- * This file defines an object of `GermaniumDetector` class,
- * does initialization, and wait forever.
+ * Creates GermaniumDetector (constructor initializes everything),
+ * then enters the blocking ZMQ command loop.
  *
  * @author Ji Li <liji@bnl.gov>
- * @date 08/11/2025
+ * @date 04/04/2026
  * @copyright
- * Copyright (c) 2025 Brookhaven National Laboratory
+ * Copyright (c) 2026 Brookhaven National Laboratory
  * @license BSD 3-Clause License. See LICENSE file for details.
  */
+
+//===========================================================================//
+
+#include <cstdio>
+#include <csignal>
+
 #include "GermaniumDetector.hpp"
+
+//===========================================================================//
+
+static GermaniumDetector* g_det = nullptr;
+
+static void signal_handler( int /*sig*/ )
+{
+    if (g_det) {
+        g_det->stop();
+    }
+}
+
+//===========================================================================//
 
 int main()
 {
+    printf("GermaniumDetector starting...\n");
+
     GermaniumDetector det;
+    g_det = &det;
 
-    det.base_->create_queues();
+    std::signal(SIGINT,  signal_handler);
+    std::signal(SIGTERM, signal_handler);
 
-    det.base_->network_init();
+    det.run();
 
-    det.base_->create_tasks();
-
-    vTaskStartScheduler();
-
-    for(;;);
+    printf("GermaniumDetector stopped.\n");
+    return 0;
 }
+
+//===========================================================================//
