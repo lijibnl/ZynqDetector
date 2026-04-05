@@ -2,7 +2,8 @@
  * @file PsI2c.cpp
  * @brief Member function definitions of `PsI2c` — Linux version.
  * @details
- * Uses /dev/i2c-N with ioctl I2C_RDWR for bus access.
+ * Hardware build: /dev/i2c-N with ioctl I2C_RDWR for bus access.
+ * Simulation build: no-op stubs.
  *
  * @author Ji Li <liji@bnl.gov>
  * @date 04/04/2026
@@ -13,22 +14,45 @@
 
 //===========================================================================//
 
-#include <cstdio>
+#include "PsI2c.hpp"
 #include <cstring>
+
+//===========================================================================//
+
+#ifdef SIM_MODE
+
+PsI2c::PsI2c( uint8_t bus_index, const Logger& logger )
+    : bus_index_ ( bus_index )
+    , logger_    ( logger    )
+{
+    logger_.log_debug( "PsI2c %d: simulation mode", bus_index_ );
+}
+
+PsI2c::~PsI2c() {}
+
+int PsI2c::write( uint8_t /*slave_addr*/, const uint8_t* /*buffer*/, uint16_t /*length*/ )
+{
+    return 0;
+}
+
+int PsI2c::read( uint8_t /*slave_addr*/, uint8_t* buffer, uint16_t length )
+{
+    std::memset( buffer, 0, length );
+    return 0;
+}
+
+#else // !SIM_MODE
+
+#include <cstdio>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
-#include "PsI2c.hpp"
-
-//===========================================================================//
-
 PsI2c::PsI2c( uint8_t bus_index, const Logger& logger )
     : fd_        ( -1        )
     , bus_index_ ( bus_index )
-    , sim_       ( false     )
     , logger_    ( logger    )
 {
     char devpath[32];
@@ -37,12 +61,9 @@ PsI2c::PsI2c( uint8_t bus_index, const Logger& logger )
     fd_ = open( devpath, O_RDWR );
     if ( fd_ < 0 )
     {
-        sim_ = true;
-        logger_.log_debug( "PsI2c %d: simulation mode (no %s)", bus_index_, devpath );
+        logger_.log_error( "PsI2c %d: failed to open %s", bus_index_, devpath );
     }
 }
-
-//===========================================================================//
 
 PsI2c::~PsI2c()
 {
@@ -52,15 +73,8 @@ PsI2c::~PsI2c()
     }
 }
 
-//===========================================================================//
-
 int PsI2c::write( uint8_t slave_addr, const uint8_t* buffer, uint16_t length )
 {
-    if ( sim_ )
-    {
-        return 0;
-    }
-
     std::lock_guard<std::mutex> lock( mutex_ );
 
     struct i2c_msg msg;
@@ -82,16 +96,8 @@ int PsI2c::write( uint8_t slave_addr, const uint8_t* buffer, uint16_t length )
     return 0;
 }
 
-//===========================================================================//
-
 int PsI2c::read( uint8_t slave_addr, uint8_t* buffer, uint16_t length )
 {
-    if ( sim_ )
-    {
-        std::memset( buffer, 0, length );
-        return 0;
-    }
-
     std::lock_guard<std::mutex> lock( mutex_ );
 
     struct i2c_msg msg;
@@ -113,7 +119,5 @@ int PsI2c::read( uint8_t slave_addr, uint8_t* buffer, uint16_t length )
     return 0;
 }
 
-//===========================================================================//
-
-//===========================================================================//
+#endif // SIM_MODE
 

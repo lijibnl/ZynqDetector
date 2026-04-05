@@ -109,6 +109,11 @@ void GermaniumZMQ::run_special(Network::CommandHandler handler)
         msg.addr  = wire.addr;
         msg.value = wire.value;
 
+#ifdef SIM_MODE
+        logger_.log_debug("ZMQ REQ: cmd=0x%02X addr=0x%04X value=0x%08X",
+                          msg.cmd, msg.addr, msg.value);
+#endif
+
         ///< Dispatch to detector
         handler(msg);
 
@@ -116,6 +121,11 @@ void GermaniumZMQ::run_special(Network::CommandHandler handler)
         wire.cmd   = msg.cmd;
         wire.addr  = msg.addr;
         wire.value = msg.value;
+
+#ifdef SIM_MODE
+        logger_.log_debug("ZMQ REP: cmd=0x%02X addr=0x%04X value=0x%08X",
+                          wire.cmd, wire.addr, wire.value);
+#endif
 
         zmq_send(zmq_rep_, &wire, sizeof(wire), 0);
     }

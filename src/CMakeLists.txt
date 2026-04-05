@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(SIM_MODE "Build in simulation mode (heap-backed registers, no-op I2C)" OFF)
+
 #---------------------------------------------------------------------------
 # Dependencies
 #---------------------------------------------------------------------------
@@ -57,6 +59,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${INCLUDE_DIRS}
     ${ZMQ_INCLUDE_DIRS}
 )
+
+if(SIM_MODE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE SIM_MODE)
+endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${ZMQ_LIBRARIES}

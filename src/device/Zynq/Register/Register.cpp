@@ -2,7 +2,8 @@
  * @file Register.cpp
  * @brief Member function definitions of `Register` — Linux version.
  * @details
- * Uses /dev/mem mmap for FPGA register access.
+ * Hardware build: /dev/mem mmap for FPGA register access.
+ * Simulation build: heap-backed array with preset defaults.
  *
  * @author Ji Li <liji@bnl.gov>
  * @date 04/04/2026
@@ -14,30 +15,48 @@
 //===========================================================================//
 
 #include <cstdio>
-#include <cstdlib>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
 
 #include "Register.hpp"
 
 //===========================================================================//
 
+#ifdef SIM_MODE
+
+#include "GermaniumRegister.hpp"
+
+Register::Register( uintptr_t /*base_addr*/, size_t map_size )
+    : base_( nullptr )
+{
+    size_t nwords = map_size / sizeof(uint32_t);
+    sim_mem_.resize( nwords, 0 );
+    base_ = sim_mem_.data();
+
+    for (size_t i = 0; i < GermaniumReg::SIM_DEFAULTS_COUNT; ++i) {
+        base_[ GermaniumReg::SIM_DEFAULTS[i].offset ] =
+            GermaniumReg::SIM_DEFAULTS[i].value;
+    }
+
+    printf("Register: simulation mode (heap-backed, %zu words)\n", nwords);
+}
+
+Register::~Register() {}
+
+#else // !SIM_MODE
+
+#include <cstdlib>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+
 Register::Register( uintptr_t base_addr, size_t map_size )
-    : base_     ( nullptr   )
-    , fd_       ( -1        )
-    , map_size_ ( map_size  )
-    , sim_      ( false     )
+    : base_     ( nullptr  )
+    , fd_       ( -1       )
+    , map_size_ ( map_size )
 {
     fd_ = open("/dev/mem", O_RDWR | O_SYNC);
     if (fd_ < 0) {
-        ///< Fall back to simulation mode
-        size_t nwords = map_size_ / sizeof(uint32_t);
-        sim_mem_.resize( nwords, 0 );
-        base_ = sim_mem_.data();
-        sim_ = true;
-        printf("Register: simulation mode (heap-backed, %zu words)\n", nwords);
-        return;
+        perror("Register: open /dev/mem failed");
+        std::abort();
     }
 
     void* mapped = mmap( nullptr
@@ -51,31 +70,23 @@ Register::Register( uintptr_t base_addr, size_t map_size )
     if (mapped == MAP_FAILED) {
         perror("Register: mmap failed");
         close(fd_);
-        fd_ = -1;
-
-        ///< Fall back to simulation mode
-        size_t nwords = map_size_ / sizeof(uint32_t);
-        sim_mem_.resize( nwords, 0 );
-        base_ = sim_mem_.data();
-        sim_ = true;
-        printf("Register: simulation mode (heap-backed, %zu words)\n", nwords);
-        return;
+        std::abort();
     }
 
     base_ = static_cast<volatile uint32_t*>(mapped);
 }
 
-//===========================================================================//
-
 Register::~Register()
 {
-    if (!sim_ && base_ && base_ != MAP_FAILED) {
+    if (base_ && base_ != MAP_FAILED) {
         munmap(const_cast<uint32_t*>(base_), map_size_);
     }
     if (fd_ >= 0) {
         close(fd_);
     }
 }
+
+#endif // SIM_MODE
 
 //===========================================================================//
 

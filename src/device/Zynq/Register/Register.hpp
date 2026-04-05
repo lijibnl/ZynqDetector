@@ -18,7 +18,10 @@
 #include <cstdint>
 #include <cstddef>
 #include <mutex>
+
+#ifdef SIM_MODE
 #include <vector>
+#endif
 
 //===========================================================================//
 
@@ -30,11 +33,6 @@ public:
 
     Register(const Register&) = delete;
     Register& operator=(const Register&) = delete;
-
-    /**
-     * @brief True if using heap-backed simulation (no /dev/mem).
-     */
-    bool is_sim() const { return sim_; }
 
     /**
      * @brief Single register write (mutex-protected).
@@ -72,12 +70,15 @@ public:
     void set_status( uint32_t status );
 
 private:
-    volatile uint32_t*      base_;
-    int                     fd_;
-    size_t                  map_size_;
-    std::mutex              mutex_;
-    bool                    sim_;
-    std::vector<uint32_t>   sim_mem_;
+#ifdef SIM_MODE
+    uint32_t*              base_;
+    std::vector<uint32_t>  sim_mem_;
+#else
+    volatile uint32_t*     base_;
+    int                    fd_;
+    size_t                 map_size_;
+#endif
+    std::mutex             mutex_;
 };
 
 //===========================================================================//
