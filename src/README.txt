@@ -17,7 +17,9 @@ Notes:
 	- Requires pkg-config and libzmq development files. Install with:
     
       ```
-      sudo apt update && sudo apt install libzmq3-dev
+      sudo apt update
+      sudo apt install pkg-config
+      sudo apt install libzmq3-dev
       ```
 
     - Generate build artifacts under `build/`.
