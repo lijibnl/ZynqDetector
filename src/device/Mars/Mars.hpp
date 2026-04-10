@@ -22,6 +22,7 @@
 #include <cstdint>
 
 #include "Register.hpp"
+#include "Logger.hpp"
 
 //===========================================================================//
 
@@ -105,7 +106,7 @@ enum MarsChannelField
 class Mars
 {
 public:
-    explicit Mars( Register& reg );
+    explicit Mars( Register& reg, const Logger& logger );
 
     /**
      * @brief Set a global (per-chip) configuration field.
@@ -140,6 +141,7 @@ private:
     static constexpr uint16_t MARS_CONF_LOAD = 0;
 
     Register& reg_;
+    const Logger& logger_;
 
     chipstr  globalstr_ [MAX_NCHIPS];
     chanstr  channelstr_[MAX_CHANNELS];

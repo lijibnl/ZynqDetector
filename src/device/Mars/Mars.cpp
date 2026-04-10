@@ -25,8 +25,9 @@
 
 //===========================================================================//
 
-Mars::Mars( Register& reg )
+Mars::Mars( Register& reg, const Logger& logger )
     : reg_( reg )
+    , logger_( logger )
 {
     std::memset( globalstr_,  0, sizeof(globalstr_)  );
     std::memset( channelstr_, 0, sizeof(channelstr_) );
@@ -61,7 +62,7 @@ void Mars::set_global_field( uint16_t chip_mask
             case MARS_FIELD_M0:   globalstr_[chip].m0   = value; break;
             case MARS_FIELD_SAUX: globalstr_[chip].saux = value; break;
             default:
-                printf( "MARS: unknown global field_id %d\n", field_id );
+                logger_.log_warn("MARS: unknown global field_id %d", field_id);
                 break;
         }
     }
@@ -81,7 +82,7 @@ void Mars::set_channel_field( uint16_t channel
     {
         if ( channel >= MAX_CHANNELS )
         {
-            printf( "MARS: channel %d out of range\n", channel );
+            logger_.log_warn("MARS: channel %d out of range", channel);
             return;
         }
         start = channel;
@@ -105,7 +106,7 @@ void Mars::set_channel_field( uint16_t channel
                 channelstr_[ch].dp = value;
                 break;
             default:
-                printf( "MARS: unknown channel field_id %d\n", field_id );
+                logger_.log_warn("MARS: unknown channel field_id %d", field_id);
                 break;
         }
     }
@@ -269,7 +270,7 @@ void Mars::stuff_mars( uint16_t chip_mask )
         std::this_thread::sleep_for( std::chrono::milliseconds(1) );
     }
 
-    printf( "MARS: stuff_mars complete (chip_mask=0x%03X)\n", chip_mask );
+    logger_.log_debug("MARS: stuff_mars complete (chip_mask=0x%03X)", chip_mask);
 }
 
 //===========================================================================//

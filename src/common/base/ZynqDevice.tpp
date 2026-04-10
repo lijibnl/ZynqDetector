@@ -127,7 +127,7 @@ void ZynqDevice< DerivedDevice
 /**
  * @brief Run the main command loop.
  * @details The Network's rx loop receives messages, decodes them into
- * DeviceMsg, and calls derived().handle_command(msg). This method blocks.
+ * DeviceMsg, and calls derived().dispatch_command(msg). This method blocks.
  */
 template< typename DerivedDevice
         , typename DerivedNetwork
@@ -139,7 +139,7 @@ void ZynqDevice< DerivedDevice
                >::run()
 {
     network_->run(
-        [this](DeviceMsg& msg) { derived().handle_command(msg); }
+        [this](const DeviceMsg& msg) { derived().dispatch_command(msg); }
     );
 }
 

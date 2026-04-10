@@ -35,6 +35,12 @@ namespace DeviceCmd {
     static constexpr uint32_t SET_GLOBAL      = 0x10;
     static constexpr uint32_t SET_CHANNEL     = 0x11;
     static constexpr uint32_t MARS_LOAD       = 0x12;
+    static constexpr uint32_t ADC_CLK_SKEW    = 0x20;
+    static constexpr uint32_t I2C_TEMP_READ   = 0x21;
+    static constexpr uint32_t XADC_READ       = 0x22;
+    static constexpr uint32_t I2C_DAC_WRITE   = 0x23;
+    static constexpr uint32_t I2C_ADC_READ    = 0x24;
+    static constexpr uint32_t I2C_DAC_INIT    = 0x25;
 }
 
 //===========================================================================//

@@ -11,6 +11,7 @@ SOURCES := \
 	detector_main.cpp \
 	common/Logger/Logger.cpp \
 	common/DeviceWorker/DeviceWorker.cpp \
+	common/AsyncWorker/AsyncWorker.cpp \
 	device/Zynq/Register/Register.cpp \
 	device/Zynq/PsI2c/PsI2c.cpp \
 	device/Mars/Mars.cpp \
@@ -23,6 +24,7 @@ INCLUDE_DIRS := \
 	common/Logger \
 	common/DeviceMsg \
 	common/DeviceWorker \
+	common/AsyncWorker \
 	common/ThreadQueue \
 	device/Network \
 	device/Zynq \

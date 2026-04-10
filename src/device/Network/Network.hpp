@@ -5,7 +5,8 @@
  * Transport-agnostic CRTP base. Derived classes (GermaniumZMQ,
  * GermaniumUDP, etc.) implement the actual wire protocol.
  *
- * Replaces the FreeRTOS lwIP version.
+ * Async model: rx_thread dispatches incoming commands via a
+ * non-blocking callback; tx_thread drains a response queue.
  *
  * @author Ji Li <liji@bnl.gov>
  * @date 04/04/2026
@@ -29,7 +30,12 @@ class Network
 {
 public:
 
-    using CommandHandler = std::function<void(DeviceMsg&)>;
+    /**
+     * @brief Non-blocking command dispatcher.
+     * Called by rx_thread for each received message.
+     * The dispatcher pushes work to per-bus AsyncWorkers.
+     */
+    using CommandDispatcher = std::function<void(const DeviceMsg&)>;
 
     explicit Network( const Logger& logger );
 
@@ -50,18 +56,19 @@ public:
     void create_network_tasks();
 
     /**
-     * @brief Run the command loop (blocks).
-     * @param handler  Callback for each received command.
+     * @brief Run the network rx loop (blocks).
+     * @param dispatcher  Non-blocking callback for each received command.
      *
      * The derived class implements run_special() which:
-     *   1. Receives a wire message
-     *   2. Decodes it into DeviceMsg
-     *   3. Calls handler(msg)
-     *   4. Encodes the (possibly modified) DeviceMsg as a reply
-     *   5. Sends the reply
-     *   6. Loops
+     *   1. Starts the tx_thread (drains response queue)
+     *   2. Enters rx loop: recv → decode → dispatcher(msg) → loop
      */
-    void run(CommandHandler handler);
+    void run(CommandDispatcher dispatcher);
+
+    /**
+     * @brief Push a reply to the response queue for the tx_thread.
+     */
+    void tx_reply(const DeviceMsg& msg);
 
     /**
      * @brief Signal the network loop to stop.

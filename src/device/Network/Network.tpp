@@ -45,12 +45,23 @@ void Network<DerivedNetwork>::create_network_tasks()
 //===========================================================================//
 
 /**
- * @brief Run the command loop — delegates to derived.
+ * @brief Run the network rx loop — delegates to derived.
  */
 template < typename DerivedNetwork >
-void Network<DerivedNetwork>::run(CommandHandler handler)
+void Network<DerivedNetwork>::run(CommandDispatcher dispatcher)
 {
-    derived().run_special(std::move(handler));
+    derived().run_special(std::move(dispatcher));
+}
+
+//===========================================================================//
+
+/**
+ * @brief Push a reply for the tx_thread — delegates to derived.
+ */
+template < typename DerivedNetwork >
+void Network<DerivedNetwork>::tx_reply(const DeviceMsg& msg)
+{
+    derived().tx_reply_special(msg);
 }
 
 //===========================================================================//

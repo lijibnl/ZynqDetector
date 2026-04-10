@@ -37,11 +37,14 @@ Zynq<DerivedZynq>::Zynq
 
 /**
  * @brief Create device access worker threads.
+ * @details Configure register_worker_ handler but do NOT start it.
+ * In the async model, AsyncWorkers handle runtime dispatch.
+ * In the sync model, the derived class may call register_worker_.start().
  */
 template < typename DerivedZynq >
 void Zynq<DerivedZynq>::create_device_access_tasks()
 {
-    ///< Set up register worker handler
+    ///< Set up register worker handler (for optional sync use)
     register_worker_.set_handler(
         [this](uint32_t addr, uint32_t value) -> uint32_t {
             ///< Bit 15 set = read, else write (matches FreeRTOS convention)
@@ -53,9 +56,8 @@ void Zynq<DerivedZynq>::create_device_access_tasks()
             }
         }
     );
-    register_worker_.start();
 
-    ///< Derived class creates its own workers (I2C, XADC, etc.)
+    ///< Derived class creates its own workers / tasks
     derived().create_device_access_tasks_special();
 }
 

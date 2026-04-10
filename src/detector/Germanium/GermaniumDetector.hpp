@@ -1,11 +1,13 @@
 /**
  * @file GermaniumDetector.hpp
- * @brief Class definition of `GermaniumDetector` — Linux version.
+ * @brief Class definition of `GermaniumDetector` — async Linux version.
  * @details
  * The main detector class. Inherits ZynqDevice with 3 CRTP params.
- * Owns Mars and all detector-specific components.
- * Single handle_command() dispatches DeviceMsg to the appropriate
- * worker or handler.
+ * Owns Mars, all AsyncWorkers, and the dispatch logic.
+ *
+ * dispatch_command() is called by the rx_thread (non-blocking).
+ * It routes each DeviceMsg to the appropriate AsyncWorker.
+ * Workers push replies via the Network::tx_reply() callback.
  *
  * @author Ji Li <liji@bnl.gov>
  * @date 04/04/2026
@@ -22,8 +24,9 @@
 #include "ZynqDevice.hpp"
 #include "GermaniumZMQ.hpp"
 #include "GermaniumZynq.hpp"
+#include "GermaniumRegister.hpp"
 #include "Mars.hpp"
-#include "DeviceWorker.hpp"
+#include "AsyncWorker.hpp"
 #include "DeviceMsg.hpp"
 
 //===========================================================================//
@@ -37,7 +40,7 @@ public:
     GermaniumDetector();
 
     /**
-     * @brief CRTP hook — create queues (no additional queues needed).
+     * @brief CRTP hook — no additional queues needed.
      */
     void create_queues_special();
 
@@ -47,22 +50,40 @@ public:
     void create_components_special();
 
     /**
-     * @brief CRTP hook — start detector-specific worker threads.
+     * @brief CRTP hook — create and start AsyncWorkers.
      */
     void create_tasks_special();
 
     /**
-     * @brief Single command dispatcher.
-     * @param msg  Application-level command from the network layer.
-     *             msg.value is modified in place for read responses.
-     *
-     * Called by ZynqDevice::run() → Network::run() → handler(msg).
+     * @brief Non-blocking command dispatcher (called by rx_thread).
+     * Routes each DeviceMsg to the appropriate AsyncWorker.
+     * For inline ops (SET_GLOBAL, SET_CHANNEL), processes immediately
+     * and pushes reply to the response queue.
      */
-    void handle_command( DeviceMsg& msg );
+    void dispatch_command( const DeviceMsg& msg );
 
 private:
-    std::unique_ptr<Mars>  mars_;
-    DeviceWorker           mars_worker_;
+    std::unique_ptr<Mars>    mars_;
+
+    ///< Per-bus async workers
+    std::unique_ptr<AsyncWorker> reg_worker_;
+    std::unique_ptr<AsyncWorker> mars_worker_;
+    std::unique_ptr<AsyncWorker> spi_worker_;
+    std::unique_ptr<AsyncWorker> i2c0_worker_;
+    std::unique_ptr<AsyncWorker> i2c1_worker_;
+    std::unique_ptr<AsyncWorker> xadc_worker_;
+
+    ///< Initialization (runs before network loop)
+    void init_hardware();
+    void init_adc_clk_skew();
+    void init_dac_reference();
+    void init_mars_defaults();
+
+    ///< SPI bit-bang helpers (used by spi_worker handler)
+    void ad9252_set_clk_skew( int chip_num, int skew );
+    void ad9252_cnfg( int chip_num, int addr, int val );
+    void ad9252_load_reg( int chip_sel, int addr, int data );
+    void ad9252_send_spi_bit( int chip_sel, int val );
 };
 
 //===========================================================================//
