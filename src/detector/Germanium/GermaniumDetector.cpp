@@ -3,7 +3,7 @@
  * @brief Member function definitions of `GermaniumDetector` — async version.
  *
  * @author Ji Li <liji@bnl.gov>
- * @date 04/04/2026
+ * @date 04/04/
  * @copyright
  * Copyright (c) 2026 Brookhaven National Laboratory
  * @license BSD 3-Clause License. See LICENSE file for details.
@@ -341,6 +341,15 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
         case DeviceCmd::I2C_DAC_INIT:
             i2c1_worker_->submit( msg );
             break;
+
+        case DeviceCmd::SET_LOG_LEVEL:
+        {
+            logger_.set_log_control( static_cast<uint8_t>(msg.value) );
+            logger_.log_debug( "GermaniumDetector: log level set to 0x%02X",
+                               logger_.read_log_control() );
+            network_->tx_reply( msg );
+            break;
+        }
 
         default:
             logger_.log_warn( "GermaniumDetector: unknown cmd 0x%02X", msg.cmd );

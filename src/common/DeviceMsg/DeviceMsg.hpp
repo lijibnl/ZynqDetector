@@ -41,6 +41,7 @@ namespace DeviceCmd {
     static constexpr uint32_t I2C_DAC_WRITE   = 0x23;
     static constexpr uint32_t I2C_ADC_READ    = 0x24;
     static constexpr uint32_t I2C_DAC_INIT    = 0x25;
+    static constexpr uint32_t SET_LOG_LEVEL   = 0x30;
 }
 
 //===========================================================================//
