@@ -17,7 +17,8 @@ SOURCES := \
 	device/Mars/Mars.cpp \
 	detector/Germanium/GermaniumDetector.cpp \
 	detector/Germanium/GermaniumZynq.cpp \
-	detector/Germanium/GermaniumZMQ.cpp
+	detector/Germanium/GermaniumZMQ.cpp \
+	detector/Germanium/GermaniumParamFormat.cpp
 
 INCLUDE_DIRS := \
 	common/base \
