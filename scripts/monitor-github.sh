@@ -48,13 +48,26 @@ cleanup() {
 trap cleanup INT TERM
 
 zynq_pull_and_build() {
-    log "SSH to $ZYNQ_HOST: pull and build..."
-    if ssh "$ZYNQ_HOST" "cd $ZYNQ_DIR && git pull --ff-only origin $BRANCH && $ZYNQ_BUILD_CMD" 2>&1 | \
-        while IFS= read -r line; do log "  zynq: $line"; done; then
-        log "Zynq updated and built."
+    log "--- Zynq update begin ---"
+    log "SSH to $ZYNQ_HOST: checking current commit..."
+    ssh "$ZYNQ_HOST" "cd $ZYNQ_DIR && git rev-parse --short HEAD" 2>/dev/null | while IFS= read -r line; do log "  zynq: current commit $line"; done
+
+    log "SSH to $ZYNQ_HOST: git pull..."
+    ssh "$ZYNQ_HOST" "cd $ZYNQ_DIR && git pull --ff-only origin $BRANCH" 2>&1 | while IFS= read -r line; do log "  zynq: $line"; done
+
+    log "SSH to $ZYNQ_HOST: new commit..."
+    zynq_commit=$(ssh "$ZYNQ_HOST" "cd $ZYNQ_DIR && git rev-parse --short HEAD" 2>/dev/null)
+    log "  zynq: new commit $zynq_commit"
+
+    log "SSH to $ZYNQ_HOST: build start..."
+    build_log=$(ssh "$ZYNQ_HOST" "cd $ZYNQ_DIR/src && make CXX=g++" 2>&1)
+    while IFS= read -r line; do log "  zynq: $line"; done <<< "$build_log"
+    if echo "$build_log" | grep -q "error"; then
+        log "Zynq build: FAILED"
     else
-        log "WARN: Zynq pull/build failed."
+        log "Zynq build: SUCCESS"
     fi
+    log "--- Zynq update end (commit $zynq_commit) ---"
 }
 
 poll_and_sync() {
