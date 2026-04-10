@@ -27,7 +27,7 @@ POLL_INTERVAL=10
 BRANCH="async-zmq"
 BARE_REPO="$HOME/data/git/ZynqDetector.git"
 
-ZYNQ_HOST="root@xf27id1-germ1"
+ZYNQ_HOST="root@172.16.0.1"
 ZYNQ_DIR="/opt/ZynqDetector"
 ZYNQ_BUILD_CMD="cd ${ZYNQ_DIR}/src && make CXX=g++"
 
