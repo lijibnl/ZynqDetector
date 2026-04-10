@@ -115,9 +115,6 @@ log "  Zynq  : $ZYNQ_HOST:$ZYNQ_DIR"
 # Initial check on startup
 startup_full_sync
 
-# Poll only GitHub in the loop
-github_poll_loop
-
 github_poll_loop() {
     local local_sha remote_sha bare_sha
     while true; do
@@ -145,5 +142,4 @@ github_poll_loop() {
     done
 }
 
-# Poll only GitHub in the loop
 github_poll_loop
