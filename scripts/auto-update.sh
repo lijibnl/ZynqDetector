@@ -111,13 +111,12 @@ log "  Clone : $CLONE_DIR"
 log "  Bare  : $BARE_REPO"
 log "  Zynq  : $ZYNQ_HOST:$ZYNQ_DIR"
 
+
 # Initial check on startup
 startup_full_sync
 
-while true; do
-    sleep "$POLL_INTERVAL"
-    poll_and_sync
-done
+# Poll only GitHub in the loop
+github_poll_loop
 
 github_poll_loop() {
     local local_sha remote_sha bare_sha
