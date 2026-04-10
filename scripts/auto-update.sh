@@ -70,7 +70,7 @@ zynq_pull_and_build() {
     log "--- Zynq update end (commit $zynq_commit) ---"
 }
 
-poll_and_sync() {
+startup_full_sync() {
     local local_sha remote_sha zynq_sha
 
     local_sha=$(git -C "$CLONE_DIR" rev-parse "$BRANCH" 2>/dev/null) || return
@@ -112,9 +112,39 @@ log "  Bare  : $BARE_REPO"
 log "  Zynq  : $ZYNQ_HOST:$ZYNQ_DIR"
 
 # Initial check on startup
-poll_and_sync
+startup_full_sync
 
 while true; do
     sleep "$POLL_INTERVAL"
     poll_and_sync
 done
+
+github_poll_loop() {
+    local local_sha remote_sha bare_sha
+    while true; do
+        sleep "$POLL_INTERVAL"
+        local_sha=$(git -C "$CLONE_DIR" rev-parse "$BRANCH" 2>/dev/null) || continue
+        git -C "$CLONE_DIR" fetch origin "$BRANCH" --quiet 2>/dev/null || continue
+        remote_sha=$(git -C "$CLONE_DIR" rev-parse "origin/$BRANCH" 2>/dev/null) || continue
+
+        if [[ "$local_sha" != "$remote_sha" ]]; then
+            log "New commits: ${local_sha:0:7} -> ${remote_sha:0:7}"
+            git -C "$CLONE_DIR" pull --ff-only origin "$BRANCH" --quiet 2>&1 | while IFS= read -r line; do log "  $line"; done
+            log "Clone updated to $(git -C "$CLONE_DIR" rev-parse --short HEAD)"
+
+            bare_sha=$(git --git-dir="$BARE_REPO" rev-parse "$BRANCH" 2>/dev/null)
+            if [[ -f "$BARE_REPO/HEAD" ]]; then
+                git -C "$CLONE_DIR" push "$BARE_REPO" "$BRANCH:$BRANCH" --quiet 2>&1 | while IFS= read -r line; do log "  bare: $line"; done
+                log "Bare repo synced"
+            else
+                log "WARN: bare repo $BARE_REPO not found, skipping sync"
+            fi
+
+            # Always update Zynq if new commits
+            zynq_pull_and_build
+        fi
+    done
+}
+
+# Poll only GitHub in the loop
+github_poll_loop
