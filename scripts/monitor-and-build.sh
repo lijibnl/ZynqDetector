@@ -90,7 +90,10 @@ log "  Clone : $CLONE_DIR"
 log "  Source: $SRC_DIR"
 log "  Remote: $REMOTE"
 
+# Initial check on startup
+pull_and_build
+
 while true; do
-    pull_and_build
     sleep "$POLL_INTERVAL"
+    pull_and_build
 done

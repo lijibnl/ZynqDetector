@@ -72,7 +72,10 @@ log "Starting GitHub monitor (poll every ${POLL_INTERVAL}s, branch=$BRANCH)"
 log "  Clone   : $CLONE_DIR"
 log "  Bare    : $BARE_REPO"
 
+# Initial check on startup
+poll_and_sync
+
 while true; do
-    poll_and_sync
     sleep "$POLL_INTERVAL"
+    poll_and_sync
 done
