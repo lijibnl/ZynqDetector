@@ -71,7 +71,7 @@ zynq_pull_and_build() {
 }
 
 poll_and_sync() {
-    local local_sha remote_sha
+    local local_sha remote_sha zynq_sha
 
     local_sha=$(git -C "$CLONE_DIR" rev-parse "$BRANCH" 2>/dev/null) || return
     git -C "$CLONE_DIR" fetch origin "$BRANCH" --quiet 2>/dev/null || {
@@ -80,25 +80,29 @@ poll_and_sync() {
     }
     remote_sha=$(git -C "$CLONE_DIR" rev-parse "origin/$BRANCH" 2>/dev/null) || return
 
+    # Update local clone if needed
     if [[ "$local_sha" != "$remote_sha" ]]; then
         log "New commits: ${local_sha:0:7} -> ${remote_sha:0:7}"
-
-        # 1. Pull into this clone
-        git -C "$CLONE_DIR" pull --ff-only origin "$BRANCH" --quiet 2>&1 | \
-            while IFS= read -r line; do log "  $line"; done
+        git -C "$CLONE_DIR" pull --ff-only origin "$BRANCH" --quiet 2>&1 | while IFS= read -r line; do log "  $line"; done
         log "Clone updated to $(git -C "$CLONE_DIR" rev-parse --short HEAD)"
+    fi
 
-        # 2. Push to bare repo
-        if [[ -f "$BARE_REPO/HEAD" ]]; then
-            git -C "$CLONE_DIR" push "$BARE_REPO" "$BRANCH:$BRANCH" --quiet 2>&1 | \
-                while IFS= read -r line; do log "  bare: $line"; done
-            log "Bare repo synced"
-        else
-            log "WARN: bare repo $BARE_REPO not found, skipping sync"
-        fi
+    # Always push to bare repo (safe if up to date)
+    if [[ -f "$BARE_REPO/HEAD" ]]; then
+        git -C "$CLONE_DIR" push "$BARE_REPO" "$BRANCH:$BRANCH" --quiet 2>&1 | while IFS= read -r line; do log "  bare: $line"; done
+        log "Bare repo synced"
+    else
+        log "WARN: bare repo $BARE_REPO not found, skipping sync"
+    fi
 
-        # 3. SSH to Zynq: pull and build
+    # Check Zynq commit and update if needed
+    zynq_sha=$(ssh "$ZYNQ_HOST" "cd $ZYNQ_DIR && git rev-parse $BRANCH 2>/dev/null" 2>/dev/null)
+    bare_sha=$(git --git-dir="$BARE_REPO" rev-parse "$BRANCH" 2>/dev/null)
+    if [[ "$zynq_sha" != "$bare_sha" ]]; then
+        log "Zynq is behind: $zynq_sha -> $bare_sha"
         zynq_pull_and_build
+    else
+        log "Zynq is up to date ($zynq_sha)"
     fi
 }
 
