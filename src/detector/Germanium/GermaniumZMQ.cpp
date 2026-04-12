@@ -149,12 +149,10 @@ void GermaniumZMQ::run_special(Network::CommandDispatcher dispatcher)
         msg.value = wire.value;
 
 
-#ifdef SIM_MODE
         logger_.log_debug("ZMQ RX: cmd=0x%02X addr=0x%04X value=0x%08X",
                 msg.cmd, msg.addr, msg.value);
         logger_.log_debug("ZMQ RX (decoded): %s",
                 format_rx_msg(msg).c_str());
-#endif
 
         ///< Non-blocking dispatch to per-bus workers
         dispatcher(msg);
@@ -176,12 +174,10 @@ void GermaniumZMQ::tx_loop()
         wire.addr  = msg.addr;
         wire.value = msg.value;
 
-#ifdef SIM_MODE
         logger_.log_debug("ZMQ TX: cmd=0x%02X addr=0x%04X value=0x%08X",
                           wire.cmd, wire.addr, wire.value);
         logger_.log_debug("ZMQ TX (decoded): %s",
                           format_rx_msg(msg).c_str());
-#endif
 
         zmq_send(zmq_tx_, &wire, sizeof(wire), 0);
     }
