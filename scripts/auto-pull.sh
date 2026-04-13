@@ -63,3 +63,4 @@ zynq_pull_and_build() {
         ssh "$ZYNQ_HOST" "pkill -f GermaniumDetector"
     fi
     log "--- Zynq update end (commit $zynq_commit) ---"
+}
