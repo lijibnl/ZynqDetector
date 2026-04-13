@@ -34,7 +34,7 @@ static constexpr uint16_t MARS_CONFIG       = 2;
 static constexpr uint16_t VERSIONREG        = 3;
 static constexpr uint16_t MARS_CALPULSE     = 4;
 static constexpr uint16_t MARS_PIPE_DELAY   = 5;
-static constexpr uint16_t DETECTOR_TYPE     = 6;
+static constexpr uint16_t DETECTOR_MODEL     = 6;
 static constexpr uint16_t MARS_RDOUT_ENB    = 8;
 static constexpr uint16_t EVENT_TIME_CNTR   = 9;
 static constexpr uint16_t SIM_EVT_SEL       = 10;
@@ -66,7 +66,7 @@ static constexpr uint16_t COUNT_MODE        = 56;
 //===========================================================================//
 
 static constexpr uint32_t SIM_VERSION       = 0x20260404;   // firmware version
-static constexpr uint32_t SIM_DETECTOR_TYPE = 0x0001;       // 1 = Germanium
+static constexpr uint32_t SIM_DETECTOR_MODEL = 0x0001;       // 1 = Germanium
 
 struct RegDefault {
     uint16_t offset;
@@ -75,7 +75,7 @@ struct RegDefault {
 
 static constexpr RegDefault SIM_DEFAULTS[] = {
     { VERSIONREG,       SIM_VERSION       },
-    { DETECTOR_TYPE,    SIM_DETECTOR_TYPE  },
+    { DETECTOR_MODEL,    SIM_DETECTOR_MODEL  },
     { MARS_CONFIG,      0x00000000        },
     { MARS_PIPE_DELAY,  0x00000005        },
     { MARS_RDOUT_ENB,   0x00000000        },

@@ -66,7 +66,7 @@ void GermaniumNetwork::rx_msg_proc_special( const UdpRxMsg& msg )
         case (EVENT_FIFO_CTRL) :
             proc_register_single_access_msg( msg );
             break;
-        case (DETECTOR_TYPE)   :
+        case (DETECTOR_MODEL)   :
             proc_register_single_access_msg( msg );
             break;
         case (MARS_RDOUT_ENB)  :

@@ -34,6 +34,7 @@ Ad9252<DerivedNetwork>::Ad9252( Register&            reg
 template<typename DerivedNetwork>
 void Ad9252<DerivedNetwork>::set_clk_skew ( int chip_num, int skew )
 {
+    logger_.log_debug( "Ad9252: set clock skew: chip=%d, skew=%d", chip_num, skew );
     ad9252_cnfg( chip_num, 22, skew );  /* clock skew adjust */
     ad9252_cnfg( chip_num, 255, 1 ); /* latch regs */
 }

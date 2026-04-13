@@ -86,7 +86,7 @@ public:
     static constexpr uint16_t ADC_CLK_SKEW      = 191;
     static constexpr uint16_t ZDDM_ARM          = 192;
 
-    static constexpr uint16_t DETECTOR_TYPE     = 193;
+    static constexpr uint16_t DETECTOR_MODEL     = 193;
     static constexpr uint16_t COUNT_TIME_LO     = 194;
     static constexpr uint16_t COUNT_TIME_HI     = 195;
 

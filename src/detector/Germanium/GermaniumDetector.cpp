@@ -236,8 +236,8 @@ void GermaniumDetector::init_hardware()
     init_adc_clk_skew();
     init_mars_defaults();
 
-    ///< Set detector type and readout enable
-    zynq_->reg().write( GermaniumReg::DETECTOR_TYPE, 1 );  ///< 384-ch
+    ///< Set detector model and readout enable
+    zynq_->reg().write( GermaniumReg::DETECTOR_MODEL, 1 );  ///< 384-ch
     zynq_->reg().write( GermaniumReg::MARS_RDOUT_ENB, 0x8FFF );
 
     logger_.log_debug("GermaniumDetector: hardware init complete");
