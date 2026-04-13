@@ -148,7 +148,7 @@ void GermaniumZMQ::run_special(Network::CommandDispatcher dispatcher)
         msg.addr  = wire.addr;
         msg.value = wire.value;
 
-
+        logger_.log_debug("--------------------------------------------");
         logger_.log_debug("ZMQ RX: cmd=0x%02X addr=0x%04X value=0x%08X",
                 msg.cmd, msg.addr, msg.value);
         logger_.log_debug("ZMQ RX (decoded): %s",
@@ -178,6 +178,8 @@ void GermaniumZMQ::tx_loop()
                           wire.cmd, wire.addr, wire.value);
         logger_.log_debug("ZMQ TX (decoded): %s",
                           format_rx_msg(msg).c_str());
+
+        logger_.log_debug("--------------------------------------------");
 
         zmq_send(zmq_tx_, &wire, sizeof(wire), 0);
     }
