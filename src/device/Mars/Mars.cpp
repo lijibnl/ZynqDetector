@@ -114,6 +114,53 @@ void Mars::set_channel_field( uint16_t channel
 
 //===========================================================================//
 
+uint32_t Mars::get_global_field( uint16_t chip, uint16_t field_id ) const
+{
+    if ( chip >= MAX_NCHIPS )
+        return 0;
+
+    switch ( field_id )
+    {
+        case MARS_FIELD_ST:   return globalstr_[chip].ts;
+        case MARS_FIELD_GAIN: return globalstr_[chip].g;
+        case MARS_FIELD_POL:  return globalstr_[chip].sp;
+        case MARS_FIELD_EBLK: return globalstr_[chip].sl;
+        case MARS_FIELD_GMON: return globalstr_[chip].m1;
+        case MARS_FIELD_PUEN: return globalstr_[chip].spur;
+        case MARS_FIELD_MFS:  return globalstr_[chip].sse;
+        case MARS_FIELD_TDS:  return globalstr_[chip].tr;
+        case MARS_FIELD_TDM:  return globalstr_[chip].tm;
+        case MARS_FIELD_TH:   return globalstr_[chip].pa;
+        case MARS_FIELD_C:    return globalstr_[chip].c;
+        case MARS_FIELD_M0:   return globalstr_[chip].m0;
+        case MARS_FIELD_SAUX: return globalstr_[chip].saux;
+        default:
+            logger_.log_warn("MARS: get_global_field unknown field_id %d", field_id);
+            return 0;
+    }
+}
+
+//===========================================================================//
+
+uint32_t Mars::get_channel_field( uint16_t channel, uint16_t field_id ) const
+{
+    if ( channel >= MAX_CHANNELS )
+        return 0;
+
+    switch ( field_id )
+    {
+        case MARS_CH_CHEN: return channelstr_[channel].sm ? 0 : 1;
+        case MARS_CH_TSEN: return channelstr_[channel].st;
+        case MARS_CH_THTR: return channelstr_[channel].da;
+        case MARS_CH_PUTR: return channelstr_[channel].dp;
+        default:
+            logger_.log_warn("MARS: get_channel_field unknown field_id %d", field_id);
+            return 0;
+    }
+}
+
+//===========================================================================//
+
 void Mars::load( uint16_t chip_mask )
 {
     wrap();

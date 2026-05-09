@@ -79,6 +79,9 @@ private:
     void init_dac_reference();
     void init_mars_defaults();
 
+    ///< ADC clock skew cache (indexed by chip_num 1..3)
+    int adc_clk_skew_[4] = {0, 9, 8, 8};  ///< init defaults matching init_adc_clk_skew()
+
     ///< SPI bit-bang helpers (used by spi_worker handler)
     void ad9252_set_clk_skew( int chip_num, int skew );
     void ad9252_cnfg( int chip_num, int addr, int val );

@@ -131,6 +131,22 @@ public:
                           );
 
     /**
+     * @brief Read a global (per-chip) configuration field from in-memory state.
+     * @param chip     Chip index (0..11).
+     * @param field_id MarsGlobalField enum value.
+     * @return         Current field value.
+     */
+    uint32_t get_global_field( uint16_t chip, uint16_t field_id ) const;
+
+    /**
+     * @brief Read a per-channel configuration field from in-memory state.
+     * @param channel  Channel index (0..383).
+     * @param field_id MarsChannelField enum value.
+     * @return         Current field value.
+     */
+    uint32_t get_channel_field( uint16_t channel, uint16_t field_id ) const;
+
+    /**
      * @brief Pack configuration and load to MARS ASICs.
      * @param chip_mask 12-bit mask selecting which chips to load.
      */

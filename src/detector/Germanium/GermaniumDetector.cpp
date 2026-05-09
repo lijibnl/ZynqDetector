@@ -125,8 +125,11 @@ void GermaniumDetector::create_tasks_special()
     spi_worker_ = std::make_unique<AsyncWorker>( "SPI", sender, logger_ );
     spi_worker_->set_handler(
         [this](DeviceMsg& msg) {
-            ad9252_set_clk_skew( static_cast<int>(msg.addr),
-                                 static_cast<int>(msg.value) );
+            int chip = static_cast<int>(msg.addr);
+            int skew = static_cast<int>(msg.value);
+            ad9252_set_clk_skew( chip, skew );
+            if ( chip >= 1 && chip <= 3 )
+                adc_clk_skew_[chip] = skew;
         }
     );
     spi_worker_->start();
@@ -315,6 +318,17 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             break;
         }
 
+        case DeviceCmd::GET_GLOBAL:
+        {
+            ///< Inline — read Mars in-memory state (fast, no HW I/O)
+            uint16_t chip      = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
+            uint16_t field_id  = static_cast<uint16_t>( msg.addr & 0xFFFF );
+            DeviceMsg reply = msg;
+            reply.value = mars_->get_global_field( chip, field_id );
+            network_->tx_reply( reply );
+            break;
+        }
+
         case DeviceCmd::SET_CHANNEL:
         {
             ///< Inline — update Mars in-memory state (fast, no HW I/O)
@@ -325,13 +339,34 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             break;
         }
 
+        case DeviceCmd::GET_CHANNEL:
+        {
+            ///< Inline — read Mars in-memory state (fast, no HW I/O)
+            uint16_t channel  = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
+            uint16_t field_id = static_cast<uint16_t>( msg.addr & 0xFFFF );
+            DeviceMsg reply = msg;
+            reply.value = mars_->get_channel_field( channel, field_id );
+            network_->tx_reply( reply );
+            break;
+        }
+
         case DeviceCmd::MARS_LOAD:
             mars_worker_->submit( msg );
             break;
 
-        case DeviceCmd::ADC_CLK_SKEW:
+        case DeviceCmd::ADC_CLK_SKEW_SET:
             spi_worker_->submit( msg );
             break;
+
+        case DeviceCmd::ADC_CLK_SKEW_READ:
+        {
+            DeviceMsg reply = msg;
+            int chip = static_cast<int>(msg.addr);
+            reply.value = (chip >= 1 && chip <= 3)
+                        ? static_cast<uint32_t>(adc_clk_skew_[chip]) : 0;
+            network_->tx_reply( reply );
+            break;
+        }
 
         case DeviceCmd::I2C_TEMP_READ:
             i2c0_worker_->submit( msg );

@@ -7,9 +7,12 @@ const char* decode_cmd(uint32_t cmd) {
         case DeviceCmd::REG_READ:      return "REG_READ";
         case DeviceCmd::REG_WRITE:     return "REG_WRITE";
         case DeviceCmd::SET_GLOBAL:    return "SET_GLOBAL";
+        case DeviceCmd::GET_GLOBAL:    return "GET_GLOBAL";
         case DeviceCmd::SET_CHANNEL:   return "SET_CHANNEL";
+        case DeviceCmd::GET_CHANNEL:   return "GET_CHANNEL";
         case DeviceCmd::MARS_LOAD:     return "MARS_LOAD";
-        case DeviceCmd::ADC_CLK_SKEW:  return "ADC_CLK_SKEW";
+        case DeviceCmd::ADC_CLK_SKEW_SET:  return "ADC_CLK_SKEW_SET";
+        case DeviceCmd::ADC_CLK_SKEW_READ: return "ADC_CLK_SKEW_READ";
         case DeviceCmd::I2C_TEMP_READ: return "I2C_TEMP_READ";
         case DeviceCmd::XADC_READ:     return "XADC_READ";
         case DeviceCmd::I2C_DAC_WRITE: return "I2C_DAC_WRITE";
@@ -92,13 +95,15 @@ std::string format_rx_msg(const DeviceMsg& msg) {
             oss << (regname ? regname : "reg?") << " [0x" << std::hex << msg.addr << "] value=0x" << std::hex << msg.value;
             break;
         }
-        case DeviceCmd::SET_GLOBAL: {
+        case DeviceCmd::SET_GLOBAL:
+        case DeviceCmd::GET_GLOBAL: {
             uint16_t chip_mask = (msg.addr >> 16) & 0x0FFF;
             uint16_t field_id  = msg.addr & 0xFFFF;
             oss << "chip_mask=0x" << std::hex << chip_mask << " field=" << decode_global_field(field_id) << " [" << field_id << "] value=0x" << std::hex << msg.value;
             break;
         }
-        case DeviceCmd::SET_CHANNEL: {
+        case DeviceCmd::SET_CHANNEL:
+        case DeviceCmd::GET_CHANNEL: {
             uint16_t channel  = (msg.addr >> 16) & 0x0FFF;
             uint16_t field_id = msg.addr & 0xFFFF;
             oss << "channel=" << std::dec << channel << " field=" << decode_channel_field(field_id) << " [" << field_id << "] value=0x" << std::hex << msg.value;
@@ -109,7 +114,8 @@ std::string format_rx_msg(const DeviceMsg& msg) {
             oss << "chip_mask=0x" << std::hex << chip_mask;
             break;
         }
-        case DeviceCmd::ADC_CLK_SKEW:
+        case DeviceCmd::ADC_CLK_SKEW_SET:
+        case DeviceCmd::ADC_CLK_SKEW_READ:
         case DeviceCmd::I2C_TEMP_READ:
         case DeviceCmd::XADC_READ:
         case DeviceCmd::I2C_DAC_WRITE:
