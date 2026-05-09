@@ -44,6 +44,7 @@ LDLIBS += $(ZMQ_LIBS) -lpthread
 
 ifeq ($(SIM_MODE),1)
 CPPFLAGS += -DSIM_MODE
+$(info ============ SIM_MODE enabled ============= )
 endif
 
 OBJECTS := $(addprefix $(BUILD_DIR)/,$(SOURCES:.cpp=.o))

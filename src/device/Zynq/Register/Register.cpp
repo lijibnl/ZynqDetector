@@ -74,6 +74,9 @@ Register::Register( uintptr_t base_addr, size_t map_size )
     }
 
     base_ = static_cast<volatile uint32_t*>(mapped);
+
+    printf("Register: hardware mode (mmap /dev/mem, %zu bytes)\n", map_size_);
+
 }
 
 Register::~Register()

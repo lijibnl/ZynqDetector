@@ -75,6 +75,7 @@ void AsyncWorker::run()
         if (!running_) break;
 
         if (handler_) {
+            logger_.log_debug( "AsyncWorker[%s]: handling message", name_.c_str() );
             handler_( msg );
         }
 

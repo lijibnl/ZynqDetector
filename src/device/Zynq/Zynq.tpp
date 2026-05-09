@@ -31,7 +31,9 @@ Zynq<DerivedZynq>::Zynq
     : reg_              ( std::make_unique<Register>( base_addr, map_size ) )
     , register_worker_  ( "REG" )
     , logger_           ( logger )
-{}
+{
+    printf("Zynq: initialized with base_addr=0x%08X, map_size=%zu\n", static_cast<unsigned>(base_addr), map_size);
+}
 
 //===========================================================================//
 

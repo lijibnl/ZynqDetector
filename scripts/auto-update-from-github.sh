@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# monitor-github.sh — Poll GitHub, sync bare repo, and update Zynq via SSH.
+# auto-update-from-github.sh — Poll GitHub, sync bare repo, and update Zynq via SSH.
 #
 # Runs on the Linux dev machine from the ZynqDetector clone.
 # On new commits:
@@ -8,8 +8,7 @@
 #   2. Pushes to the local bare repo
 #   3. SSHs to the Zynq to pull and build
 #
-# Usage:  ./scripts/monitor-github.sh
-#   or:   nohup ./scripts/monitor-github.sh &
+# Usage:  ./scripts/auto-update-from-github.sh
 #
 # First-time setup (dev machine):
 #   cd ~/data/git

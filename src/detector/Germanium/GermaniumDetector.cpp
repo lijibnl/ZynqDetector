@@ -45,6 +45,8 @@ GermaniumDetector::GermaniumDetector()
                 , GermaniumZynq
                 >()
 {
+    printf("GermaniumDetector: initialization started...\n");
+
     create_queues();
 
     create_components();
@@ -55,6 +57,9 @@ GermaniumDetector::GermaniumDetector()
     network_init();
 
     create_tasks();
+
+    printf("GermaniumDetector: initialization complete\n");
+    printf("=================================================\n");
 }
 
 //===========================================================================//
@@ -365,6 +370,7 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
 
 void GermaniumDetector::ad9252_set_clk_skew( int chip_num, int skew )
 {
+    logger_.log_debug( "[%s]: chip=%d, skew=%d", __func__, chip_num, skew );
     ad9252_cnfg( chip_num, 22, skew );
     ad9252_cnfg( chip_num, 255, 1 );
 }

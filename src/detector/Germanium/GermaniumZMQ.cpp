@@ -180,6 +180,7 @@ void GermaniumZMQ::tx_loop()
                           format_rx_msg(msg).c_str());
 
         logger_.log_debug("--------------------------------------------");
+        logger_.log_debug("");
 
         zmq_send(zmq_tx_, &wire, sizeof(wire), 0);
     }

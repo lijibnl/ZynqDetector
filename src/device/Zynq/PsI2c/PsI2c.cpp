@@ -63,6 +63,10 @@ PsI2c::PsI2c( uint8_t bus_index, const Logger& logger )
     {
         logger_.log_error( "PsI2c %d: failed to open %s", bus_index_, devpath );
     }
+    else
+    {
+        logger_.log_debug( "PsI2c %d: opened %s", bus_index_, devpath );
+    }
 }
 
 PsI2c::~PsI2c()
@@ -98,6 +102,7 @@ int PsI2c::write( uint8_t slave_addr, const uint8_t* buffer, uint16_t length )
 
 int PsI2c::read( uint8_t slave_addr, uint8_t* buffer, uint16_t length )
 {
+    logger_.log_debug( "PsI2c %d: reading %d bytes from 0x%02X", bus_index_, length, slave_addr );
     std::lock_guard<std::mutex> lock( mutex_ );
 
     struct i2c_msg msg;
