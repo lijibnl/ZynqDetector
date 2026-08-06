@@ -16,32 +16,31 @@
 
 //===========================================================================//
 
-#include <cstdint>
+#include "GermaniumDetectorProtocol.hpp"
 
 //===========================================================================//
 
-struct DeviceMsg {
-    uint32_t cmd;       // command code
-    uint32_t addr;      // word offset, field encoding, or bus-specific address
-    uint32_t value;     // data in/out
-};
+using DeviceMsg = GermaniumProtocol::Message;
 
 //===========================================================================//
 
 ///< Command codes
 namespace DeviceCmd {
-    static constexpr uint32_t REG_READ        = 0x00;
-    static constexpr uint32_t REG_WRITE       = 0x01;
-    static constexpr uint32_t SET_GLOBAL      = 0x10;
-    static constexpr uint32_t SET_CHANNEL     = 0x11;
-    static constexpr uint32_t MARS_LOAD       = 0x12;
-    static constexpr uint32_t ADC_CLK_SKEW    = 0x20;
-    static constexpr uint32_t I2C_TEMP_READ   = 0x21;
-    static constexpr uint32_t XADC_READ       = 0x22;
-    static constexpr uint32_t I2C_DAC_WRITE   = 0x23;
-    static constexpr uint32_t I2C_ADC_READ    = 0x24;
-    static constexpr uint32_t I2C_DAC_INIT    = 0x25;
-    static constexpr uint32_t SET_LOG_LEVEL   = 0x30;
+    static constexpr uint32_t REG_READ          = GermaniumProtocol::Command::REG_READ;
+    static constexpr uint32_t REG_WRITE         = GermaniumProtocol::Command::REG_WRITE;
+    static constexpr uint32_t SET_GLOBAL        = GermaniumProtocol::Command::MARS_GLOBAL_SET;
+    static constexpr uint32_t MARS_GLOBAL_READ  = GermaniumProtocol::Command::MARS_GLOBAL_READ;
+    static constexpr uint32_t SET_CHANNEL       = GermaniumProtocol::Command::MARS_CHANNEL_SET;
+    static constexpr uint32_t MARS_CHANNEL_READ = GermaniumProtocol::Command::MARS_CHANNEL_READ;
+    static constexpr uint32_t MARS_LOAD         = GermaniumProtocol::Command::MARS_LOAD;
+    static constexpr uint32_t ADC_CLK_SKEW      = GermaniumProtocol::Command::ADC_CLK_SKEW_SET;
+    static constexpr uint32_t I2C_TEMP_READ     = GermaniumProtocol::Command::I2C_TEMP_READ;
+    static constexpr uint32_t XADC_READ         = GermaniumProtocol::Command::XADC_READ;
+    static constexpr uint32_t I2C_DAC_WRITE     = GermaniumProtocol::Command::I2C_DAC_WRITE;
+    static constexpr uint32_t I2C_ADC_READ      = GermaniumProtocol::Command::I2C_ADC_READ;
+    static constexpr uint32_t I2C_DAC_INIT      = GermaniumProtocol::Command::I2C_DAC_INIT;
+    static constexpr uint32_t SET_LOG_LEVEL     = GermaniumProtocol::Command::SET_LOG_LEVEL;
+    static constexpr uint32_t HEARTBEAT         = GermaniumProtocol::Command::HEARTBEAT;
 }
 
 //===========================================================================//

@@ -58,8 +58,8 @@ static constexpr uint16_t COUNT_MODE        = 56;
 //===========================================================================//
 //  Simulation default values
 //
-//  When the server runs in simulation mode (no /dev/mem), registers are
-//  initialized to these values.  The IOC can read VERSIONREG to verify
+//  When the server runs in simulation mode without the hardware register
+//  backend, registers are initialized to these values. The IOC can read VERSIONREG to verify
 //  connectivity and confirm it is talking to the correct firmware/sim.
 //
 //  Format: { word_offset, default_value }

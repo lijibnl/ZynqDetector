@@ -23,6 +23,7 @@
 
 #include "Register.hpp"
 #include "Logger.hpp"
+#include "GermaniumDetectorProtocol.hpp"
 
 //===========================================================================//
 
@@ -76,30 +77,25 @@ struct chanstr
 //  MARS field IDs (must match ADGermaniumZMQ enums)
 //===========================================================================//
 
-enum MarsGlobalField
-{
-    MARS_FIELD_ST   = 0,
-    MARS_FIELD_GAIN = 1,
-    MARS_FIELD_POL  = 2,
-    MARS_FIELD_EBLK = 3,
-    MARS_FIELD_GMON = 4,
-    MARS_FIELD_PUEN = 5,
-    MARS_FIELD_MFS  = 6,
-    MARS_FIELD_TDS  = 7,
-    MARS_FIELD_TDM  = 8,
-    MARS_FIELD_TH   = 9,
-    MARS_FIELD_C    = 10,
-    MARS_FIELD_M0   = 11,
-    MARS_FIELD_SAUX = 12,
-};
-
-enum MarsChannelField
-{
-    MARS_CH_CHEN = 0,
-    MARS_CH_TSEN = 1,
-    MARS_CH_THTR = 2,
-    MARS_CH_PUTR = 3,
-};
+using GermaniumProtocol::MarsGlobalField;
+using GermaniumProtocol::MarsChannelField;
+using GermaniumProtocol::MARS_FIELD_ST;
+using GermaniumProtocol::MARS_FIELD_GAIN;
+using GermaniumProtocol::MARS_FIELD_POL;
+using GermaniumProtocol::MARS_FIELD_EBLK;
+using GermaniumProtocol::MARS_FIELD_GMON;
+using GermaniumProtocol::MARS_FIELD_PUEN;
+using GermaniumProtocol::MARS_FIELD_MFS;
+using GermaniumProtocol::MARS_FIELD_TDS;
+using GermaniumProtocol::MARS_FIELD_TDM;
+using GermaniumProtocol::MARS_FIELD_TH;
+using GermaniumProtocol::MARS_FIELD_C;
+using GermaniumProtocol::MARS_FIELD_M0;
+using GermaniumProtocol::MARS_FIELD_SAUX;
+using GermaniumProtocol::MARS_CH_CHEN;
+using GermaniumProtocol::MARS_CH_TSEN;
+using GermaniumProtocol::MARS_CH_THTR;
+using GermaniumProtocol::MARS_CH_PUTR;
 
 //===========================================================================//
 
@@ -131,6 +127,18 @@ public:
                           );
 
     /**
+     * @brief Read a global (per-chip) configuration field from cached state.
+     * @param chip      Chip index (0..11).
+     * @param field_id  MarsGlobalField enum value.
+     * @param value     Updated with the cached field value on success.
+     * @return true if chip and field_id are valid.
+     */
+    bool get_global_field( uint16_t chip
+                         , uint16_t field_id
+                         , uint32_t& value
+                         ) const;
+
+    /**
      * @brief Pack configuration and load to MARS ASICs.
      * @param chip_mask 12-bit mask selecting which chips to load.
      */
@@ -139,6 +147,7 @@ public:
 private:
 
     static constexpr uint16_t MARS_CONF_LOAD = 0;
+    static constexpr uint16_t MARS_CONFIG    = 2;
 
     Register& reg_;
     const Logger& logger_;
@@ -155,7 +164,7 @@ private:
     void wrap();
 
     /**
-     * @brief Write loads to MARS ASICs via MARS_CONF_LOAD register.
+     * @brief Write packed config words to MARS_CONFIG and pulse MARS_CONF_LOAD.
      * @param chip_mask 12-bit mask selecting which chips to program.
      */
     void stuff_mars( uint16_t chip_mask );

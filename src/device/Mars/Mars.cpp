@@ -114,6 +114,42 @@ void Mars::set_channel_field( uint16_t channel
 
 //===========================================================================//
 
+bool Mars::get_global_field( uint16_t chip
+                           , uint16_t field_id
+                           , uint32_t& value
+                           ) const
+{
+    if ( chip >= MAX_NCHIPS )
+    {
+        logger_.log_warn("MARS: chip %d out of range", chip);
+        return false;
+    }
+
+    const chipstr& g = globalstr_[chip];
+
+    switch ( field_id )
+    {
+        case MARS_FIELD_ST:   value = g.ts;   return true;
+        case MARS_FIELD_GAIN: value = g.g;    return true;
+        case MARS_FIELD_POL:  value = g.sp;   return true;
+        case MARS_FIELD_EBLK: value = g.sl;   return true;
+        case MARS_FIELD_GMON: value = g.m1;   return true;
+        case MARS_FIELD_PUEN: value = g.spur; return true;
+        case MARS_FIELD_MFS:  value = g.sse;  return true;
+        case MARS_FIELD_TDS:  value = g.tr;   return true;
+        case MARS_FIELD_TDM:  value = g.tm;   return true;
+        case MARS_FIELD_TH:   value = g.pa;   return true;
+        case MARS_FIELD_C:    value = g.c;    return true;
+        case MARS_FIELD_M0:   value = g.m0;   return true;
+        case MARS_FIELD_SAUX: value = g.saux; return true;
+        default:
+            logger_.log_warn("MARS: unknown global field_id %d", field_id);
+            return false;
+    }
+}
+
+//===========================================================================//
+
 void Mars::load( uint16_t chip_mask )
 {
     wrap();
@@ -184,14 +220,14 @@ void Mars::wrap()
         bp.push( g.saux,   1 );
         bp.push( g.sp,     1 );
         bp.push( g.slh,    1 );
-        bp.push( g.g,      2 );
-        bp.push( g.c,      5 );
-        bp.push( g.ss,     2 );
-        bp.push( g.tr,     2 );
+        bp.push( reverse_bits( 2, g.g ),  2 );
+        bp.push( reverse_bits( 5, g.c ),  5 );
+        bp.push( reverse_bits( 2, g.ss ), 2 );
+        bp.push( reverse_bits( 2, g.tr ), 2 );
         bp.push( g.sse,    1 );
         bp.push( g.spur,   1 );
         bp.push( g.rt,     1 );
-        bp.push( g.ts,     2 );
+        bp.push( reverse_bits( 2, g.ts ), 2 );
         bp.push( g.sl,     1 );
         bp.push( g.sb,     1 );
         bp.push( g.sbn,    1 );
@@ -200,8 +236,8 @@ void Mars::wrap()
         bp.push( g.senfl2, 1 );
         bp.push( g.senfl1, 1 );
         bp.push( g.rm,     1 );
-        bp.push( g.pb,    10 );
-        bp.push( g.pa,    10 );
+        bp.push( reverse_bits( 10, g.pb ), 10 );
+        bp.push( reverse_bits( 10, g.pa ), 10 );
         // pos = 49
 
         //---------------------------------------------------------------
@@ -251,7 +287,7 @@ void Mars::stuff_mars( uint16_t chip_mask )
         ///< Write 14 configuration words with latch pulse between each
         for ( int j = 0; j < 14; j++ )
         {
-            reg_.multi_access_write( MARS_CONF_LOAD, loads_[i][j] );
+            reg_.multi_access_write( MARS_CONFIG, loads_[i][j] );
 
             ///< Latch pulse
             reg_.multi_access_write( MARS_CONF_LOAD, 2 );

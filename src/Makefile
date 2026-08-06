@@ -29,6 +29,7 @@ INCLUDE_DIRS := \
 	common/ThreadQueue \
 	device/Network \
 	device/Zynq \
+	../../../prj/germanium/protocol \
 	device/Zynq/Register \
 	device/Zynq/PsI2c \
 	device/Mars \

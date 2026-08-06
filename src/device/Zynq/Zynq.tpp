@@ -18,8 +18,8 @@
 
 /**
  * @brief Zynq constructor.
- * @param base_addr  FPGA register base address for mmap.
- * @param map_size   Size of the mmap region.
+ * @param base_addr  Retained for constructor compatibility; ignored by vipic backend.
+ * @param map_size   Retained for constructor compatibility; ignored by vipic backend.
  * @param logger     Reference to the logger.
  */
 template < typename DerivedZynq >
@@ -32,7 +32,7 @@ Zynq<DerivedZynq>::Zynq
     , register_worker_  ( "REG" )
     , logger_           ( logger )
 {
-    printf("Zynq: initialized with base_addr=0x%08X, map_size=%zu\n", static_cast<unsigned>(base_addr), map_size);
+    printf("Zynq: initialized with register backend parameters base_addr=0x%08X, map_size=%zu\n", static_cast<unsigned>(base_addr), map_size);
 }
 
 //===========================================================================//

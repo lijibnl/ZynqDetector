@@ -6,9 +6,10 @@ const char* decode_cmd(uint32_t cmd) {
     switch (cmd) {
         case DeviceCmd::REG_READ:      return "REG_READ";
         case DeviceCmd::REG_WRITE:     return "REG_WRITE";
-        case DeviceCmd::SET_GLOBAL:    return "SET_GLOBAL";
-        case DeviceCmd::SET_CHANNEL:   return "SET_CHANNEL";
-        case DeviceCmd::MARS_LOAD:     return "MARS_LOAD";
+        case DeviceCmd::SET_GLOBAL:       return "SET_GLOBAL";
+        case DeviceCmd::MARS_GLOBAL_READ: return "MARS_GLOBAL_READ";
+        case DeviceCmd::SET_CHANNEL:      return "SET_CHANNEL";
+        case DeviceCmd::MARS_LOAD:        return "MARS_LOAD";
         case DeviceCmd::ADC_CLK_SKEW:  return "ADC_CLK_SKEW";
         case DeviceCmd::I2C_TEMP_READ: return "I2C_TEMP_READ";
         case DeviceCmd::XADC_READ:     return "XADC_READ";
@@ -16,6 +17,7 @@ const char* decode_cmd(uint32_t cmd) {
         case DeviceCmd::I2C_ADC_READ:  return "I2C_ADC_READ";
         case DeviceCmd::I2C_DAC_INIT:  return "I2C_DAC_INIT";
         case DeviceCmd::SET_LOG_LEVEL: return "SET_LOG_LEVEL";
+        case DeviceCmd::HEARTBEAT:     return "HEARTBEAT";
         default: return "UNKNOWN";
     }
 }
@@ -92,7 +94,8 @@ std::string format_rx_msg(const DeviceMsg& msg) {
             oss << (regname ? regname : "reg?") << " [0x" << std::hex << msg.addr << "] value=0x" << std::hex << msg.value;
             break;
         }
-        case DeviceCmd::SET_GLOBAL: {
+        case DeviceCmd::SET_GLOBAL:
+        case DeviceCmd::MARS_GLOBAL_READ: {
             uint16_t chip_mask = (msg.addr >> 16) & 0x0FFF;
             uint16_t field_id  = msg.addr & 0xFFFF;
             oss << "chip_mask=0x" << std::hex << chip_mask << " field=" << decode_global_field(field_id) << " [" << field_id << "] value=0x" << std::hex << msg.value;
@@ -122,6 +125,9 @@ std::string format_rx_msg(const DeviceMsg& msg) {
             oss << "level=" << msg.value;
             break;
         }
+        case DeviceCmd::HEARTBEAT:
+            oss << "heartbeat";
+            break;
         default:
             oss << "addr=0x" << std::hex << msg.addr << " value=0x" << std::hex << msg.value;
     }

@@ -137,6 +137,8 @@ void GermaniumDetector::create_tasks_special()
     i2c0_worker_ = std::make_unique<AsyncWorker>( "I2C0", sender, logger_ );
     i2c0_worker_->set_handler(
         [this](DeviceMsg& msg) {
+            // ADGermanium sends logical selectors; ZynqDetector owns the
+            // board-specific TMP100 addresses from Mars_DDM Tmp100.db.
             static constexpr uint8_t tmp100_addrs[] = { 0x48, 0x49, 0x4A };
             if ( msg.addr > 2 ) { msg.value = 0; return; }
 
@@ -315,6 +317,26 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             break;
         }
 
+        case DeviceCmd::MARS_GLOBAL_READ:
+        {
+            DeviceMsg reply = msg;
+            uint16_t chip_mask = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
+            uint16_t field_id  = static_cast<uint16_t>( msg.addr & 0xFFFF );
+            uint16_t chip      = 0;
+
+            if ( chip_mask != 0 )
+            {
+                while ( chip < 12 && !(chip_mask & (1u << chip)) )
+                    chip++;
+            }
+
+            if ( !mars_->get_global_field( chip, field_id, reply.value ) )
+                reply.value = 0;
+
+            network_->tx_reply( reply );
+            break;
+        }
+
         case DeviceCmd::SET_CHANNEL:
         {
             ///< Inline — update Mars in-memory state (fast, no HW I/O)
@@ -355,6 +377,10 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             network_->tx_reply( msg );
             break;
         }
+
+        case DeviceCmd::HEARTBEAT:
+            network_->tx_reply( msg );
+            break;
 
         default:
             logger_.log_warn( "GermaniumDetector: unknown cmd 0x%02X", msg.cmd );

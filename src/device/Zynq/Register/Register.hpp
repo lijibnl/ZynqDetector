@@ -2,7 +2,7 @@
  * @file Register.hpp
  * @brief Class definition of `Register` — Linux version.
  * @details
- * FPGA register access via /dev/mem mmap + std::mutex.
+ * FPGA register access via /dev/vipic ioctl + std::mutex.
  * Replaces the FreeRTOS version (xSemaphore + task).
  *
  * @author Ji Li <liji@bnl.gov>
@@ -74,9 +74,7 @@ private:
     uint32_t*              base_;
     std::vector<uint32_t>  sim_mem_;
 #else
-    volatile uint32_t*     base_;
     int                    fd_;
-    size_t                 map_size_;
 #endif
     std::mutex             mutex_;
 };
