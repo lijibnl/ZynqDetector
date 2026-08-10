@@ -139,6 +139,18 @@ public:
                          ) const;
 
     /**
+     * @brief Read a channel configuration field from cached state.
+     * @param channel   Channel index (0..383).
+     * @param field_id  MarsChannelField enum value.
+     * @param value     Updated with the cached field value on success.
+     * @return true if channel and field_id are valid.
+     */
+    bool get_channel_field( uint16_t channel
+                          , uint16_t field_id
+                          , uint32_t& value
+                          ) const;
+
+    /**
      * @brief Pack configuration and load to MARS ASICs.
      * @param chip_mask 12-bit mask selecting which chips to load.
      */

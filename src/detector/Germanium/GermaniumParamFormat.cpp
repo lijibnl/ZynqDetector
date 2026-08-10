@@ -4,20 +4,23 @@
 
 const char* decode_cmd(uint32_t cmd) {
     switch (cmd) {
-        case DeviceCmd::REG_READ:      return "REG_READ";
-        case DeviceCmd::REG_WRITE:     return "REG_WRITE";
-        case DeviceCmd::SET_GLOBAL:       return "SET_GLOBAL";
-        case DeviceCmd::MARS_GLOBAL_READ: return "MARS_GLOBAL_READ";
-        case DeviceCmd::SET_CHANNEL:      return "SET_CHANNEL";
-        case DeviceCmd::MARS_LOAD:        return "MARS_LOAD";
-        case DeviceCmd::ADC_CLK_SKEW:  return "ADC_CLK_SKEW";
-        case DeviceCmd::I2C_TEMP_READ: return "I2C_TEMP_READ";
-        case DeviceCmd::XADC_READ:     return "XADC_READ";
-        case DeviceCmd::I2C_DAC_WRITE: return "I2C_DAC_WRITE";
-        case DeviceCmd::I2C_ADC_READ:  return "I2C_ADC_READ";
-        case DeviceCmd::I2C_DAC_INIT:  return "I2C_DAC_INIT";
-        case DeviceCmd::SET_LOG_LEVEL: return "SET_LOG_LEVEL";
-        case DeviceCmd::HEARTBEAT:     return "HEARTBEAT";
+        case DeviceCmd::REG_READ:          return "REG_READ";
+        case DeviceCmd::REG_WRITE:         return "REG_WRITE";
+        case DeviceCmd::SET_GLOBAL:        return "SET_GLOBAL";
+        case DeviceCmd::MARS_GLOBAL_READ:  return "MARS_GLOBAL_READ";
+        case DeviceCmd::SET_CHANNEL:       return "SET_CHANNEL";
+        case DeviceCmd::MARS_CHANNEL_READ: return "MARS_CHANNEL_READ";
+        case DeviceCmd::MARS_LOAD:         return "MARS_LOAD";
+        case DeviceCmd::ADC_CLK_SKEW_SET:  return "ADC_CLK_SKEW_SET";
+        case DeviceCmd::ADC_CLK_SKEW_READ: return "ADC_CLK_SKEW_READ";
+        case DeviceCmd::I2C_TEMP_READ:     return "I2C_TEMP_READ";
+        case DeviceCmd::XADC_READ:         return "XADC_READ";
+        case DeviceCmd::I2C_DAC_WRITE:     return "I2C_DAC_WRITE";
+        case DeviceCmd::I2C_ADC_READ:      return "I2C_ADC_READ";
+        case DeviceCmd::I2C_DAC_INIT:      return "I2C_DAC_INIT";
+        case DeviceCmd::SET_LOG_LEVEL:     return "SET_LOG_LEVEL";
+        case DeviceCmd::GET_PROTOCOL_VERSION: return "GET_PROTOCOL_VERSION";
+        case DeviceCmd::HEARTBEAT:         return "HEARTBEAT";
         default: return "UNKNOWN";
     }
 }
@@ -31,7 +34,7 @@ const char* decode_reg(uint32_t addr) {
         case VERSIONREG:        return "VERSIONREG";
         case MARS_CALPULSE:     return "MARS_CALPULSE";
         case MARS_PIPE_DELAY:   return "MARS_PIPE_DELAY";
-        case DETECTOR_MODEL:     return "DETECTOR_MODEL";
+        case DETECTOR_MODEL:    return "DETECTOR_MODEL";
         case MARS_RDOUT_ENB:    return "MARS_RDOUT_ENB";
         case EVENT_TIME_CNTR:   return "EVENT_TIME_CNTR";
         case SIM_EVT_SEL:       return "SIM_EVT_SEL";
@@ -101,7 +104,8 @@ std::string format_rx_msg(const DeviceMsg& msg) {
             oss << "chip_mask=0x" << std::hex << chip_mask << " field=" << decode_global_field(field_id) << " [" << field_id << "] value=0x" << std::hex << msg.value;
             break;
         }
-        case DeviceCmd::SET_CHANNEL: {
+        case DeviceCmd::SET_CHANNEL:
+        case DeviceCmd::MARS_CHANNEL_READ: {
             uint16_t channel  = (msg.addr >> 16) & 0x0FFF;
             uint16_t field_id = msg.addr & 0xFFFF;
             oss << "channel=" << std::dec << channel << " field=" << decode_channel_field(field_id) << " [" << field_id << "] value=0x" << std::hex << msg.value;
@@ -112,7 +116,8 @@ std::string format_rx_msg(const DeviceMsg& msg) {
             oss << "chip_mask=0x" << std::hex << chip_mask;
             break;
         }
-        case DeviceCmd::ADC_CLK_SKEW:
+        case DeviceCmd::ADC_CLK_SKEW_SET:
+        case DeviceCmd::ADC_CLK_SKEW_READ:
         case DeviceCmd::I2C_TEMP_READ:
         case DeviceCmd::XADC_READ:
         case DeviceCmd::I2C_DAC_WRITE:
@@ -123,6 +128,10 @@ std::string format_rx_msg(const DeviceMsg& msg) {
         }
         case DeviceCmd::SET_LOG_LEVEL: {
             oss << "level=" << msg.value;
+            break;
+        }
+        case DeviceCmd::GET_PROTOCOL_VERSION: {
+            oss << "version=0x" << std::hex << msg.value;
             break;
         }
         case DeviceCmd::HEARTBEAT:

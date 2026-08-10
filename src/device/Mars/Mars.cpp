@@ -150,6 +150,33 @@ bool Mars::get_global_field( uint16_t chip
 
 //===========================================================================//
 
+bool Mars::get_channel_field( uint16_t channel
+                            , uint16_t field_id
+                            , uint32_t& value
+                            ) const
+{
+    if ( channel >= MAX_CHANNELS )
+    {
+        logger_.log_warn("MARS: channel %d out of range", channel);
+        return false;
+    }
+
+    const chanstr& ch = channelstr_[channel];
+
+    switch ( field_id )
+    {
+        case MARS_CH_CHEN: value = ch.sm ? 0 : 1; return true;
+        case MARS_CH_TSEN: value = ch.st;         return true;
+        case MARS_CH_THTR: value = ch.da;         return true;
+        case MARS_CH_PUTR: value = ch.dp;         return true;
+        default:
+            logger_.log_warn("MARS: unknown channel field_id %d", field_id);
+            return false;
+    }
+}
+
+//===========================================================================//
+
 void Mars::load( uint16_t chip_mask )
 {
     wrap();
