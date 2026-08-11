@@ -404,6 +404,15 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             break;
         }
 
+        case DeviceCmd::GET_PROTOCOL_VERSION:
+        {
+            DeviceMsg reply = msg;
+            reply.addr = 0;
+            reply.value = GermaniumProtocol::PROTOCOL_VERSION;
+            network_->tx_reply( reply );
+            break;
+        }
+
         case DeviceCmd::HEARTBEAT:
             network_->tx_reply( msg );
             break;

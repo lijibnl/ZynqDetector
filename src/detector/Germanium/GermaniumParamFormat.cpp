@@ -131,7 +131,10 @@ std::string format_rx_msg(const DeviceMsg& msg) {
             break;
         }
         case DeviceCmd::GET_PROTOCOL_VERSION: {
-            oss << "version=0x" << std::hex << msg.value;
+            oss << "version="
+                << GermaniumProtocol::protocolVersionMajor(msg.value)
+                << "."
+                << GermaniumProtocol::protocolVersionMinor(msg.value);
             break;
         }
         case DeviceCmd::HEARTBEAT:

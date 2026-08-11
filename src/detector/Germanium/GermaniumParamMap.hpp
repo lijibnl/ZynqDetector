@@ -7,36 +7,37 @@
 
 #include <cstdint>
 
+#include "GermaniumDetectorProtocol.hpp"
+
 // ------------------- Register Offsets -------------------
 namespace GermaniumReg {
-static constexpr uint16_t MARS_CONF_LOAD    = 0;
-static constexpr uint16_t LEDS              = 1;
-static constexpr uint16_t MARS_CONFIG       = 2;
-static constexpr uint16_t VERSIONREG        = 3;
-static constexpr uint16_t MARS_CALPULSE     = 4;
-static constexpr uint16_t MARS_PIPE_DELAY   = 5;
-static constexpr uint16_t DETECTOR_MODEL     = 6;
-static constexpr uint16_t MARS_RDOUT_ENB    = 8;
-static constexpr uint16_t EVENT_TIME_CNTR   = 9;
-static constexpr uint16_t SIM_EVT_SEL       = 10;
-static constexpr uint16_t SIM_EVENT_RATE    = 11;
-static constexpr uint16_t ADC_SPI           = 12;
-static constexpr uint16_t CALPULSE_CNT      = 16;
-static constexpr uint16_t CALPULSE_RATE     = 17;
-static constexpr uint16_t CALPULSE_WIDTH    = 18;
-static constexpr uint16_t CALPULSE_MODE     = 19;
-static constexpr uint16_t TD_CAL            = 20;
-static constexpr uint16_t EVENT_FIFO_DATA   = 24;
-static constexpr uint16_t EVENT_FIFO_CNT    = 25;
-static constexpr uint16_t EVENT_FIFO_CTRL   = 26;
-static constexpr uint16_t UDP_IP_ADDR       = 40;
-static constexpr uint16_t TRIG              = 52;
-static constexpr uint16_t COUNT_TIME_LO     = 53;
-static constexpr uint16_t COUNT_TIME_HI     = 54;
-static constexpr uint16_t FRAME_NO          = 55;
-static constexpr uint16_t COUNT_MODE        = 56;
+using GermaniumProtocol::Register::MARS_CONF_LOAD;
+using GermaniumProtocol::Register::LEDS;
+using GermaniumProtocol::Register::MARS_CONFIG;
+using GermaniumProtocol::Register::VERSIONREG;
+using GermaniumProtocol::Register::MARS_CALPULSE;
+using GermaniumProtocol::Register::MARS_PIPE_DELAY;
+using GermaniumProtocol::Register::DETECTOR_MODEL;
+using GermaniumProtocol::Register::MARS_RDOUT_ENB;
+using GermaniumProtocol::Register::EVENT_TIME_CNTR;
+using GermaniumProtocol::Register::SIM_EVT_SEL;
+using GermaniumProtocol::Register::SIM_EVENT_RATE;
+using GermaniumProtocol::Register::ADC_SPI;
+using GermaniumProtocol::Register::CALPULSE_CNT;
+using GermaniumProtocol::Register::CALPULSE_RATE;
+using GermaniumProtocol::Register::CALPULSE_WIDTH;
+using GermaniumProtocol::Register::CALPULSE_MODE;
+using GermaniumProtocol::Register::TD_CAL;
+using GermaniumProtocol::Register::EVENT_FIFO_DATA;
+using GermaniumProtocol::Register::EVENT_FIFO_CNT;
+using GermaniumProtocol::Register::EVENT_FIFO_CTRL;
+using GermaniumProtocol::Register::UDP_IP_ADDR;
+using GermaniumProtocol::Register::TRIG;
+using GermaniumProtocol::Register::COUNT_TIME_LO;
+using GermaniumProtocol::Register::COUNT_TIME_HI;
+using GermaniumProtocol::Register::FRAME_NO;
+using GermaniumProtocol::Register::COUNT_MODE;
 }
-
 
 // ------------------- Global Field IDs -------------------
 enum MarsGlobalField {
