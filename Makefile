@@ -1,10 +1,9 @@
-# Makefile for Linux build of GermaniumDetector
-# Mirrors the CMake target defined in src/CMakeLists.txt.
+# Makefile for Linux build of GermaniumDetector.
 
 CXX ?= g++
 PKG_CONFIG ?= pkg-config
 
-TARGET := GermaniumDetector
+TARGET := bin/GermaniumDetector
 BUILD_DIR := build
 
 SOURCES := \
@@ -29,7 +28,6 @@ INCLUDE_DIRS := \
 	common/ThreadQueue \
 	device/Network \
 	device/Zynq \
-	../../../prj/germanium/protocol \
 	device/Zynq/Register \
 	device/Zynq/PsI2c \
 	device/Mars \
@@ -66,8 +64,11 @@ check-deps:
 		exit 1; \
 	}
 
-$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS) | bin
 	$(CXX) $(OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+
+bin:
+	mkdir -p $@
 
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
@@ -77,7 +78,7 @@ run: all
 	./$(TARGET)
 
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET)
+	rm -rf $(BUILD_DIR) bin
 
 help:
 	@echo "Targets:"
