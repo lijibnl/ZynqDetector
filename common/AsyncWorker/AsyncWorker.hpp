@@ -3,7 +3,7 @@
  * @brief Non-blocking per-bus worker for the async dispatch model.
  * @details
  * Each independent hardware bus gets its own AsyncWorker.
- * The rx_thread pushes DeviceMsg requests; the worker thread
+ * The rx_thread pushes GermaniumProtocol::Message requests; the worker thread
  * executes the handler and pushes replies via a callback.
  *
  * Replaces DeviceWorker for the runtime path.  DeviceWorker
@@ -25,7 +25,7 @@
 #include <atomic>
 
 #include "ThreadQueue.hpp"
-#include "DeviceMsg.hpp"
+#include "GermaniumDetectorProtocol.hpp"
 #include "Logger.hpp"
 
 //===========================================================================//
@@ -36,12 +36,12 @@ public:
     /**
      * @brief Handler modifies msg.value in place for the response.
      */
-    using Handler = std::function<void(DeviceMsg& msg)>;
+    using Handler = std::function<void(GermaniumProtocol::Message& msg)>;
 
     /**
      * @brief Callback to deliver the completed reply to the tx path.
      */
-    using TxSender = std::function<void(const DeviceMsg&)>;
+    using TxSender = std::function<void(const GermaniumProtocol::Message&)>;
 
     AsyncWorker( std::string name, TxSender sender, const Logger& logger );
     ~AsyncWorker();
@@ -67,14 +67,14 @@ public:
     /**
      * @brief Push a request (non-blocking).
      */
-    void submit( const DeviceMsg& msg );
+    void submit( const GermaniumProtocol::Message& msg );
 
 private:
     std::string          name_;
     Handler              handler_;
     TxSender             sender_;
     const Logger&        logger_;
-    ThreadQueue<DeviceMsg> queue_;
+    ThreadQueue<GermaniumProtocol::Message> queue_;
     std::thread          thread_;
     std::atomic<bool>    running_{false};
 

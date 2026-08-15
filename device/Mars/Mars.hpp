@@ -162,11 +162,6 @@ public:
 
 private:
 
-    static constexpr uint16_t MARS_CONF_LOAD =
-        GermaniumProtocol::Register::MARS_CONF_LOAD;
-    static constexpr uint16_t MARS_CONFIG =
-        GermaniumProtocol::Register::MARS_CONFIG;
-
     Register& reg_;
     const Logger& logger_;
 

@@ -88,7 +88,7 @@ void GermaniumDetector::create_components_special()
 void GermaniumDetector::create_tasks_special()
 {
     ///< Response callback — pushes replies to Network tx path
-    auto sender = [this](const DeviceMsg& msg) {
+    auto sender = [this](const GermaniumProtocol::Message& msg) {
         this->network_->tx_reply(msg);
     };
 
@@ -97,9 +97,9 @@ void GermaniumDetector::create_tasks_special()
     //--------------------------------------------------------------
     reg_worker_ = std::make_unique<AsyncWorker>( "REG", sender, logger_ );
     reg_worker_->set_handler(
-        [this](DeviceMsg& msg) {
+        [this](GermaniumProtocol::Message& msg) {
             auto& reg = zynq_->reg();
-            if ( msg.cmd == DeviceCmd::REG_READ ) {
+            if ( msg.cmd == GermaniumProtocol::Command::REG_READ ) {
                 msg.value = reg.read( static_cast<uint16_t>(msg.addr) );
             } else {
                 reg.write( static_cast<uint16_t>(msg.addr), msg.value );
@@ -113,7 +113,7 @@ void GermaniumDetector::create_tasks_special()
     //--------------------------------------------------------------
     mars_worker_ = std::make_unique<AsyncWorker>( "MARS", sender, logger_ );
     mars_worker_->set_handler(
-        [this](DeviceMsg& msg) {
+        [this](GermaniumProtocol::Message& msg) {
             uint16_t chip_mask = static_cast<uint16_t>(msg.addr & 0xFFF);
             mars_->load( chip_mask );
         }
@@ -125,7 +125,7 @@ void GermaniumDetector::create_tasks_special()
     //--------------------------------------------------------------
     spi_worker_ = std::make_unique<AsyncWorker>( "SPI", sender, logger_ );
     spi_worker_->set_handler(
-        [this](DeviceMsg& msg) {
+        [this](GermaniumProtocol::Message& msg) {
             int chip = static_cast<int>(msg.addr);
             int skew = static_cast<int>(msg.value);
             ad9252_set_clk_skew( chip, skew );
@@ -140,7 +140,7 @@ void GermaniumDetector::create_tasks_special()
     //--------------------------------------------------------------
     i2c0_worker_ = std::make_unique<AsyncWorker>( "I2C0", sender, logger_ );
     i2c0_worker_->set_handler(
-        [this](DeviceMsg& msg) {
+        [this](GermaniumProtocol::Message& msg) {
             // ADGermanium sends logical selectors; ZynqDetector owns the
             // board-specific TMP100 addresses from Mars_DDM Tmp100.db.
             static constexpr uint8_t tmp100_addrs[] = { 0x48, 0x49, 0x4A };
@@ -161,12 +161,12 @@ void GermaniumDetector::create_tasks_special()
     //--------------------------------------------------------------
     i2c1_worker_ = std::make_unique<AsyncWorker>( "I2C1", sender, logger_ );
     i2c1_worker_->set_handler(
-        [this](DeviceMsg& msg) {
+        [this](GermaniumProtocol::Message& msg) {
             auto& i2c = zynq_->i2c1();
 
             switch ( msg.cmd )
             {
-                case DeviceCmd::I2C_DAC_WRITE:
+                case GermaniumProtocol::Command::I2C_DAC_WRITE:
                 {
                     ///< DAC7678 write: [0x30+ch, value_MSB, value_LSB]
                     uint8_t ch   = static_cast<uint8_t>(msg.addr & 0x07);
@@ -181,7 +181,7 @@ void GermaniumDetector::create_tasks_special()
                     break;
                 }
 
-                case DeviceCmd::I2C_ADC_READ:
+                case GermaniumProtocol::Command::I2C_ADC_READ:
                 {
                     ///< LTC2309 read: write ctrl word, wait, read 2 bytes
                     uint8_t ch = static_cast<uint8_t>(msg.addr & 0x07);
@@ -197,7 +197,7 @@ void GermaniumDetector::create_tasks_special()
                     break;
                 }
 
-                case DeviceCmd::I2C_DAC_INIT:
+                case GermaniumProtocol::Command::I2C_DAC_INIT:
                 {
                     ///< DAC7678 enable internal 2.5V reference
                     uint8_t buf[3] = { 0x80, 0x00, 0x10 };
@@ -217,7 +217,7 @@ void GermaniumDetector::create_tasks_special()
     //--------------------------------------------------------------
     xadc_worker_ = std::make_unique<AsyncWorker>( "XADC", sender, logger_ );
     xadc_worker_->set_handler(
-        [this](DeviceMsg& msg) {
+        [this](GermaniumProtocol::Message& msg) {
 #ifdef SIM_MODE
             msg.value = 2423;  ///< ~25°C
 #else
@@ -305,16 +305,16 @@ void GermaniumDetector::init_mars_defaults()
 //  Non-blocking command dispatch (called by rx_thread)
 //===========================================================================//
 
-void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
+void GermaniumDetector::dispatch_command( const GermaniumProtocol::Message& msg )
 {
     switch ( msg.cmd )
     {
-        case DeviceCmd::REG_READ:
-        case DeviceCmd::REG_WRITE:
+        case GermaniumProtocol::Command::REG_READ:
+        case GermaniumProtocol::Command::REG_WRITE:
             reg_worker_->submit( msg );
             break;
 
-        case DeviceCmd::SET_GLOBAL:
+        case GermaniumProtocol::Command::MARS_GLOBAL_SET:
         {
             ///< Inline — update Mars in-memory state (fast, no HW I/O)
             uint16_t chip_mask = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
@@ -324,9 +324,9 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             break;
         }
 
-        case DeviceCmd::MARS_GLOBAL_READ:
+        case GermaniumProtocol::Command::MARS_GLOBAL_READ:
         {
-            DeviceMsg reply = msg;
+            GermaniumProtocol::Message reply = msg;
             uint16_t chip_mask = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
             uint16_t field_id  = static_cast<uint16_t>( msg.addr & 0xFFFF );
             uint16_t chip      = 0;
@@ -344,7 +344,7 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             break;
         }
 
-        case DeviceCmd::SET_CHANNEL:
+        case GermaniumProtocol::Command::MARS_CHANNEL_SET:
         {
             ///< Inline — update Mars in-memory state (fast, no HW I/O)
             uint16_t channel  = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
@@ -354,9 +354,9 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             break;
         }
 
-        case DeviceCmd::MARS_CHANNEL_READ:
+        case GermaniumProtocol::Command::MARS_CHANNEL_READ:
         {
-            DeviceMsg reply = msg;
+            GermaniumProtocol::Message reply = msg;
             uint16_t channel  = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
             uint16_t field_id = static_cast<uint16_t>( msg.addr & 0xFFFF );
 
@@ -367,17 +367,17 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             break;
         }
 
-        case DeviceCmd::MARS_LOAD:
+        case GermaniumProtocol::Command::MARS_LOAD:
             mars_worker_->submit( msg );
             break;
 
-        case DeviceCmd::ADC_CLK_SKEW_SET:
+        case GermaniumProtocol::Command::ADC_CLK_SKEW_SET:
             spi_worker_->submit( msg );
             break;
 
-        case DeviceCmd::ADC_CLK_SKEW_READ:
+        case GermaniumProtocol::Command::ADC_CLK_SKEW_READ:
         {
-            DeviceMsg reply = msg;
+            GermaniumProtocol::Message reply = msg;
             int chip = static_cast<int>(msg.addr);
             reply.value = (chip >= 1 && chip <= 3)
                         ? static_cast<uint32_t>(adc_clk_skew_[chip]) : 0;
@@ -385,21 +385,21 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             break;
         }
 
-        case DeviceCmd::I2C_TEMP_READ:
+        case GermaniumProtocol::Command::I2C_TEMP_READ:
             i2c0_worker_->submit( msg );
             break;
 
-        case DeviceCmd::XADC_READ:
+        case GermaniumProtocol::Command::XADC_READ:
             xadc_worker_->submit( msg );
             break;
 
-        case DeviceCmd::I2C_DAC_WRITE:
-        case DeviceCmd::I2C_ADC_READ:
-        case DeviceCmd::I2C_DAC_INIT:
+        case GermaniumProtocol::Command::I2C_DAC_WRITE:
+        case GermaniumProtocol::Command::I2C_ADC_READ:
+        case GermaniumProtocol::Command::I2C_DAC_INIT:
             i2c1_worker_->submit( msg );
             break;
 
-        case DeviceCmd::SET_LOG_LEVEL:
+        case GermaniumProtocol::Command::SET_LOG_LEVEL:
         {
             logger_.set_log_control( static_cast<uint8_t>(msg.value) );
             logger_.log_debug( "GermaniumDetector: log level set to 0x%02X",
@@ -408,16 +408,16 @@ void GermaniumDetector::dispatch_command( const DeviceMsg& msg )
             break;
         }
 
-        case DeviceCmd::GET_PROTOCOL_VERSION:
+        case GermaniumProtocol::Command::GET_PROTOCOL_VERSION:
         {
-            DeviceMsg reply = msg;
+            GermaniumProtocol::Message reply = msg;
             reply.addr = 0;
             reply.value = GermaniumProtocol::PROTOCOL_VERSION;
             network_->tx_reply( reply );
             break;
         }
 
-        case DeviceCmd::HEARTBEAT:
+        case GermaniumProtocol::Command::HEARTBEAT:
             network_->tx_reply( msg );
             break;
 

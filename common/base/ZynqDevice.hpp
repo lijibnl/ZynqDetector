@@ -23,7 +23,7 @@
 #include "Logger.hpp"
 #include "Network.hpp"
 #include "Zynq.hpp"
-#include "DeviceMsg.hpp"
+#include "GermaniumDetectorProtocol.hpp"
 
 //===========================================================================//
 

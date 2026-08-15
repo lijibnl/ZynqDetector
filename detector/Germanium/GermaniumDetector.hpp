@@ -6,7 +6,7 @@
  * Owns Mars, all AsyncWorkers, and the dispatch logic.
  *
  * dispatch_command() is called by the rx_thread (non-blocking).
- * It routes each DeviceMsg to the appropriate AsyncWorker.
+ * It routes each GermaniumProtocol::Message to the appropriate AsyncWorker.
  * Workers push replies via the Network::tx_reply() callback.
  *
  * @author Ji Li <liji@bnl.gov>
@@ -27,7 +27,7 @@
 #include "GermaniumRegister.hpp"
 #include "Mars.hpp"
 #include "AsyncWorker.hpp"
-#include "DeviceMsg.hpp"
+#include "GermaniumDetectorProtocol.hpp"
 
 //===========================================================================//
 
@@ -56,11 +56,11 @@ public:
 
     /**
      * @brief Non-blocking command dispatcher (called by rx_thread).
-     * Routes each DeviceMsg to the appropriate AsyncWorker.
+     * Routes each GermaniumProtocol::Message to the appropriate AsyncWorker.
      * For inline ops (SET_GLOBAL, SET_CHANNEL), processes immediately
      * and pushes reply to the response queue.
      */
-    void dispatch_command( const DeviceMsg& msg );
+    void dispatch_command( const GermaniumProtocol::Message& msg );
 
 private:
     std::unique_ptr<Mars>    mars_;

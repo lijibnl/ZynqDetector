@@ -61,7 +61,7 @@ void AsyncWorker::stop()
 
 //===========================================================================//
 
-void AsyncWorker::submit( const DeviceMsg& msg )
+void AsyncWorker::submit( const GermaniumProtocol::Message& msg )
 {
     queue_.push( msg );
 }
@@ -71,7 +71,7 @@ void AsyncWorker::submit( const DeviceMsg& msg )
 void AsyncWorker::run()
 {
     while (running_) {
-        DeviceMsg msg = queue_.pop();
+        GermaniumProtocol::Message msg = queue_.pop();
         if (!running_) break;
 
         if (handler_) {

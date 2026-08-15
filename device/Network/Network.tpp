@@ -59,7 +59,7 @@ void Network<DerivedNetwork>::run(CommandDispatcher dispatcher)
  * @brief Push a reply for the tx_thread — delegates to derived.
  */
 template < typename DerivedNetwork >
-void Network<DerivedNetwork>::tx_reply(const DeviceMsg& msg)
+void Network<DerivedNetwork>::tx_reply(const GermaniumProtocol::Message& msg)
 {
     derived().tx_reply_special(msg);
 }

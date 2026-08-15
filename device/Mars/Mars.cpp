@@ -427,24 +427,24 @@ void Mars::stuff_mars( uint16_t chip_mask )
         reg_.multi_access_start();
 
         ///< Start sequence for this chip
-        reg_.multi_access_write( MARS_CONF_LOAD, 4 );
-        reg_.multi_access_write( MARS_CONF_LOAD, 0 );
+        reg_.multi_access_write( GermaniumProtocol::Register::MARS_CONF_LOAD, 4 );
+        reg_.multi_access_write( GermaniumProtocol::Register::MARS_CONF_LOAD, 0 );
 
         ///< Write 14 configuration words with latch pulse between each
         for ( int j = 0; j < 14; j++ )
         {
-            reg_.multi_access_write( MARS_CONFIG, loads_[i][j] );
+            reg_.multi_access_write( GermaniumProtocol::Register::MARS_CONFIG, loads_[i][j] );
 
             ///< Latch pulse
-            reg_.multi_access_write( MARS_CONF_LOAD, 2 );
-            reg_.multi_access_write( MARS_CONF_LOAD, 0 );
+            reg_.multi_access_write( GermaniumProtocol::Register::MARS_CONF_LOAD, 2 );
+            reg_.multi_access_write( GermaniumProtocol::Register::MARS_CONF_LOAD, 0 );
 
             std::this_thread::sleep_for( std::chrono::milliseconds(1) );
         }
 
         ///< Chip select pulse
-        reg_.multi_access_write( MARS_CONF_LOAD, 0x00010000u << i );
-        reg_.multi_access_write( MARS_CONF_LOAD, 0 );
+        reg_.multi_access_write( GermaniumProtocol::Register::MARS_CONF_LOAD, 0x00010000u << i );
+        reg_.multi_access_write( GermaniumProtocol::Register::MARS_CONF_LOAD, 0 );
 
         reg_.multi_access_end();
 

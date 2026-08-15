@@ -21,7 +21,7 @@
 #include <functional>
 
 #include "Logger.hpp"
-#include "DeviceMsg.hpp"
+#include "GermaniumDetectorProtocol.hpp"
 
 //===========================================================================//
 
@@ -35,7 +35,7 @@ public:
      * Called by rx_thread for each received message.
      * The dispatcher pushes work to per-bus AsyncWorkers.
      */
-    using CommandDispatcher = std::function<void(const DeviceMsg&)>;
+    using CommandDispatcher = std::function<void(const GermaniumProtocol::Message&)>;
 
     explicit Network( const Logger& logger );
 
@@ -68,7 +68,7 @@ public:
     /**
      * @brief Push a reply to the response queue for the tx_thread.
      */
-    void tx_reply(const DeviceMsg& msg);
+    void tx_reply(const GermaniumProtocol::Message& msg);
 
     /**
      * @brief Signal the network loop to stop.

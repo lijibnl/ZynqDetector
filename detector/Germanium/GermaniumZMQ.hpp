@@ -24,7 +24,7 @@
 #include <cstdint>
 
 #include "Network.hpp"
-#include "DeviceMsg.hpp"
+#include "GermaniumDetectorProtocol.hpp"
 #include "ThreadQueue.hpp"
 
 //===========================================================================//
@@ -32,13 +32,6 @@
 class GermaniumZMQ : public Network<GermaniumZMQ>
 {
 public:
-    ///< Wire format — matches DeviceMsg layout
-    struct WireMsg {
-        uint32_t cmd;
-        uint32_t addr;
-        uint32_t value;
-    };
-
     static constexpr int ZMQ_CMD_PORT   = 5555;
     static constexpr int ZMQ_REPLY_PORT = 5557;
 
@@ -64,7 +57,7 @@ public:
     /**
      * @brief CRTP hook — enqueue a reply on the tx queue.
      */
-    void tx_reply_special(const DeviceMsg& msg);
+    void tx_reply_special(const GermaniumProtocol::Message& msg);
 
     /**
      * @brief CRTP hook — signal shutdown.
@@ -76,7 +69,7 @@ private:
     void*                    zmq_rx_;    ///< rx socket on cmd port
     void*                    zmq_tx_;    ///< tx socket on reply port
     std::atomic<bool>        running_;
-    ThreadQueue<DeviceMsg>   tx_queue_;
+    ThreadQueue<GermaniumProtocol::Message>   tx_queue_;
     std::thread              tx_thread_;
 
     /**

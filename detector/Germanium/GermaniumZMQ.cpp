@@ -16,7 +16,6 @@
  */
 
 
-#include "GermaniumParamFormat.hpp"
 //===========================================================================//
 
 #include <cstdio>
@@ -125,9 +124,9 @@ void GermaniumZMQ::run_special(Network::CommandDispatcher dispatcher)
     logger_.log_debug("GermaniumZMQ: rx_thread running");
 
     ///< rx loop — blocks on PULL socket
-    WireMsg wire;
     while (running_) {
-        int rc = zmq_recv(zmq_rx_, &wire, sizeof(wire), 0);
+        GermaniumProtocol::Message msg;
+        int rc = zmq_recv(zmq_rx_, &msg, sizeof(msg), 0);
         if (rc < 0) {
             if (zmq_errno() == ETERM || zmq_errno() == EINTR) {
                 break;
@@ -137,22 +136,17 @@ void GermaniumZMQ::run_special(Network::CommandDispatcher dispatcher)
             continue;
         }
 
-        if (rc != sizeof(WireMsg)) {
+        if (rc != sizeof(GermaniumProtocol::Message)) {
             logger_.log_warn("GermaniumZMQ: unexpected msg size %d (expected %zu)",
-                             rc, sizeof(WireMsg));
+                             rc, sizeof(GermaniumProtocol::Message));
             continue;
         }
-
-        DeviceMsg msg;
-        msg.cmd   = wire.cmd;
-        msg.addr  = wire.addr;
-        msg.value = wire.value;
 
         logger_.log_debug("--------------------------------------------");
         logger_.log_debug("ZMQ RX: cmd=0x%02X addr=0x%04X value=0x%08X",
                 msg.cmd, msg.addr, msg.value);
         logger_.log_debug("ZMQ RX (decoded): %s",
-                format_rx_msg(msg).c_str());
+                GermaniumProtocol::formatMessage(msg).c_str());
 
         ///< Non-blocking dispatch to per-bus workers
         dispatcher(msg);
@@ -166,29 +160,24 @@ void GermaniumZMQ::tx_loop()
     logger_.log_debug("GermaniumZMQ: tx_thread running");
 
     while (running_) {
-        DeviceMsg msg = tx_queue_.pop();
+        GermaniumProtocol::Message msg = tx_queue_.pop();
         if (!running_) break;
 
-        WireMsg wire;
-        wire.cmd   = msg.cmd;
-        wire.addr  = msg.addr;
-        wire.value = msg.value;
-
         logger_.log_debug("ZMQ TX: cmd=0x%02X addr=0x%04X value=0x%08X",
-                          wire.cmd, wire.addr, wire.value);
+                          msg.cmd, msg.addr, msg.value);
         logger_.log_debug("ZMQ TX (decoded): %s",
-                          format_rx_msg(msg).c_str());
+                          GermaniumProtocol::formatMessage(msg).c_str());
 
         logger_.log_debug("--------------------------------------------");
         logger_.log_debug("");
 
-        zmq_send(zmq_tx_, &wire, sizeof(wire), 0);
+        zmq_send(zmq_tx_, &msg, sizeof(msg), 0);
     }
 }
 
 //===========================================================================//
 
-void GermaniumZMQ::tx_reply_special(const DeviceMsg& msg)
+void GermaniumZMQ::tx_reply_special(const GermaniumProtocol::Message& msg)
 {
     tx_queue_.push(msg);
 }
