@@ -60,19 +60,20 @@ const char* decode_reg(uint32_t addr) {
 
 const char* decode_global_field(uint16_t field_id) {
     switch (field_id) {
-        case MARS_FIELD_ST:   return "ST";
-        case MARS_FIELD_GAIN: return "GAIN";
-        case MARS_FIELD_POL:  return "POL";
-        case MARS_FIELD_EBLK: return "EBLK";
-        case MARS_FIELD_GMON: return "GMON";
-        case MARS_FIELD_PUEN: return "PUEN";
-        case MARS_FIELD_MFS:  return "MFS";
-        case MARS_FIELD_TDS:  return "TDS";
-        case MARS_FIELD_TDM:  return "TDM";
-        case MARS_FIELD_TH:   return "TH";
-        case MARS_FIELD_C:    return "C";
-        case MARS_FIELD_M0:   return "M0";
-        case MARS_FIELD_SAUX: return "SAUX";
+        case MARS_FIELD_ST:      return "ST";
+        case MARS_FIELD_GAIN:    return "GAIN";
+        case MARS_FIELD_POL:     return "POL";
+        case MARS_FIELD_EBLK:    return "EBLK";
+        case MARS_FIELD_GMON:    return "GMON";
+        case MARS_FIELD_PUEN:    return "PUEN";
+        case MARS_FIELD_MFS:     return "MFS";
+        case MARS_FIELD_TDS:     return "TDS";
+        case MARS_FIELD_TDM:     return "TDM";
+        case MARS_FIELD_TH:      return "TH";
+        case MARS_FIELD_TPAMP:   return "TPAMP";
+        case MARS_FIELD_C:       return "C";
+        case MARS_FIELD_M0:      return "M0";
+        case MARS_FIELD_SAUX:    return "SAUX";
         default: return "?";
     }
 }
@@ -83,6 +84,7 @@ const char* decode_channel_field(uint16_t field_id) {
         case MARS_CH_TSEN: return "TSEN";
         case MARS_CH_THTR: return "THTR";
         case MARS_CH_PUTR: return "PUTR";
+        case MARS_CH_SEL:  return "SEL";
         default: return "?";
     }
 }
@@ -94,21 +96,29 @@ std::string format_rx_msg(const DeviceMsg& msg) {
         case DeviceCmd::REG_READ:
         case DeviceCmd::REG_WRITE: {
             const char* regname = decode_reg(msg.addr);
-            oss << (regname ? regname : "reg?") << " [0x" << std::hex << msg.addr << "] value=0x" << std::hex << msg.value;
+            oss << (regname ? regname : "reg?")
+	        << " [0x" << std::hex << msg.addr << "] value=0x"
+		<< std::hex << msg.value;
             break;
         }
         case DeviceCmd::SET_GLOBAL:
         case DeviceCmd::MARS_GLOBAL_READ: {
             uint16_t chip_mask = (msg.addr >> 16) & 0x0FFF;
             uint16_t field_id  = msg.addr & 0xFFFF;
-            oss << "chip_mask=0x" << std::hex << chip_mask << " field=" << decode_global_field(field_id) << " [" << field_id << "] value=0x" << std::hex << msg.value;
+            oss << "chip_mask=0x" << std::hex << chip_mask
+	        << " field=" << decode_global_field(field_id)
+		<< " [" << field_id << "] value=0x"
+		<< std::hex << msg.value;
             break;
         }
         case DeviceCmd::SET_CHANNEL:
         case DeviceCmd::MARS_CHANNEL_READ: {
             uint16_t channel  = (msg.addr >> 16) & 0x0FFF;
             uint16_t field_id = msg.addr & 0xFFFF;
-            oss << "channel=" << std::dec << channel << " field=" << decode_channel_field(field_id) << " [" << field_id << "] value=0x" << std::hex << msg.value;
+            oss << "channel=" << std::dec << channel
+	        << " field=" << decode_channel_field(field_id)
+		<< " [" << field_id << "] value=0x"
+		<< std::hex << msg.value;
             break;
         }
         case DeviceCmd::MARS_LOAD: {
@@ -123,7 +133,8 @@ std::string format_rx_msg(const DeviceMsg& msg) {
         case DeviceCmd::I2C_DAC_WRITE:
         case DeviceCmd::I2C_ADC_READ:
         case DeviceCmd::I2C_DAC_INIT: {
-            oss << "addr=0x" << std::hex << msg.addr << " value=0x" << std::hex << msg.value;
+            oss << "addr=0x" << std::hex << msg.addr
+	        << " value=0x" << std::hex << msg.value;
             break;
         }
         case DeviceCmd::SET_LOG_LEVEL: {
@@ -141,7 +152,8 @@ std::string format_rx_msg(const DeviceMsg& msg) {
             oss << "heartbeat";
             break;
         default:
-            oss << "addr=0x" << std::hex << msg.addr << " value=0x" << std::hex << msg.value;
+            oss << "addr=0x" << std::hex << msg.addr
+	        << " value=0x" << std::hex << msg.value;
     }
     return oss.str();
 }

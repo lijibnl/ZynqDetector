@@ -41,19 +41,20 @@ using GermaniumProtocol::Register::COUNT_MODE;
 
 // ------------------- Global Field IDs -------------------
 enum MarsGlobalField {
-    MARS_FIELD_ST   = 0,
-    MARS_FIELD_GAIN = 1,
-    MARS_FIELD_POL  = 2,
-    MARS_FIELD_EBLK = 3,
-    MARS_FIELD_GMON = 4,
-    MARS_FIELD_PUEN = 5,
-    MARS_FIELD_MFS  = 6,
-    MARS_FIELD_TDS  = 7,
-    MARS_FIELD_TDM  = 8,
-    MARS_FIELD_TH   = 9,
-    MARS_FIELD_C    = 10,
-    MARS_FIELD_M0   = 11,
-    MARS_FIELD_SAUX = 12,
+    MARS_FIELD_ST    = 0,
+    MARS_FIELD_GAIN  = 1,
+    MARS_FIELD_POL   = 2,
+    MARS_FIELD_EBLK  = 3,
+    MARS_FIELD_GMON  = 4,
+    MARS_FIELD_PUEN  = 5,
+    MARS_FIELD_MFS   = 6,
+    MARS_FIELD_TDS   = 7,
+    MARS_FIELD_TDM   = 8,
+    MARS_FIELD_TH    = 9,
+    MARS_FIELD_TPAMP = 10,
+    MARS_FIELD_C     = 11,
+    MARS_FIELD_M0    = 12,
+    MARS_FIELD_SAUX  = 13,
 };
 
 // ------------------- Channel Field IDs -------------------
@@ -62,4 +63,5 @@ enum MarsChannelField {
     MARS_CH_TSEN = 1,
     MARS_CH_THTR = 2,
     MARS_CH_PUTR = 3,
+    MARS_CH_SEL  = 4,
 };

@@ -36,6 +36,49 @@ Mars::Mars( Register& reg, const Logger& logger )
 
 //===========================================================================//
 
+void Mars::init_defaults()
+{
+    for ( int chip = 0; chip < MAX_NCHIPS; chip++ )
+    {
+        globalstr_[chip].pa     = 380;
+        globalstr_[chip].pb     = 102;
+        globalstr_[chip].rm     = 1;
+        globalstr_[chip].senfl1 = 0;
+        globalstr_[chip].senfl2 = 1;
+        globalstr_[chip].m0     = 0;
+        globalstr_[chip].m1     = 0;
+        globalstr_[chip].sbn    = 1;
+        globalstr_[chip].sb     = 1;
+        globalstr_[chip].sl     = 0;
+        globalstr_[chip].ts     = 1;
+        globalstr_[chip].rt     = 0;
+        globalstr_[chip].spur   = 0;
+        globalstr_[chip].sse    = 0;
+        globalstr_[chip].tr     = 0;
+        globalstr_[chip].ss     = 0;
+        globalstr_[chip].c      = 0;
+        globalstr_[chip].g      = 0;
+        globalstr_[chip].slh    = 0;
+        globalstr_[chip].sp     = 1;
+        globalstr_[chip].saux   = 0;
+        globalstr_[chip].sbm    = 1;
+        globalstr_[chip].tm     = 0;
+    }
+
+    for ( int ch = 0; ch < MAX_CHANNELS; ch++ )
+    {
+        channelstr_[ch].dp  = 7;
+        channelstr_[ch].nc1 = 0;
+        channelstr_[ch].da  = 3;
+        channelstr_[ch].sel = 1;
+        channelstr_[ch].nc2 = 0;
+        channelstr_[ch].sm  = 0;
+        channelstr_[ch].st  = 0;
+    }
+}
+
+//===========================================================================//
+
 void Mars::set_global_field( uint16_t chip_mask
                            , uint16_t field_id
                            , uint32_t value
@@ -51,16 +94,61 @@ void Mars::set_global_field( uint16_t chip_mask
             case MARS_FIELD_ST:   globalstr_[chip].ts   = value; break;
             case MARS_FIELD_GAIN: globalstr_[chip].g    = value; break;
             case MARS_FIELD_POL:  globalstr_[chip].sp   = value; break;
-            case MARS_FIELD_EBLK: globalstr_[chip].sl   = value; break;
+            case MARS_FIELD_EBLK:
+                switch ( value )
+                {
+                    case 0: // Off
+                        globalstr_[chip].sl  = 1;
+                        globalstr_[chip].slh = 0;
+                        break;
+          
+                    case 1: // 2pA
+                        globalstr_[chip].sl  = 0;
+                        globalstr_[chip].slh = 0;
+                        break;
+          
+                    case 2: // 8pA
+                        globalstr_[chip].sl  = 0;
+                        globalstr_[chip].slh = 1;
+                        break;
+          
+                    default:
+                        logger_.log_warn("MARS: EBLK value %u out of range", value);
+                        break;
+                }
+                break;
+
             case MARS_FIELD_GMON: globalstr_[chip].m1   = value; break;
             case MARS_FIELD_PUEN: globalstr_[chip].spur = value; break;
             case MARS_FIELD_MFS:  globalstr_[chip].sse  = value; break;
-            case MARS_FIELD_TDS:  globalstr_[chip].tr   = value; break;
-            case MARS_FIELD_TDM:  globalstr_[chip].tm   = value; break;
-            case MARS_FIELD_TH:   globalstr_[chip].pa   = value; break;
-            case MARS_FIELD_C:    globalstr_[chip].c    = value; break;
-            case MARS_FIELD_M0:   globalstr_[chip].m0   = value; break;
-            case MARS_FIELD_SAUX: globalstr_[chip].saux = value; break;
+            case MARS_FIELD_TDS:
+	    {
+	        uint8_t tr = 0;
+		uint8_t rt = 0;
+
+		switch ( value )
+		{
+                    case 0: tr = 0; rt = 0; break;
+                    case 1: tr = 1; rt = 0; break;
+                    case 2: tr = 2; rt = 0; break;
+                    case 3: tr = 3; rt = 0; break;
+                    case 4: tr = 1; rt = 1; break;
+                    case 5: tr = 2; rt = 1; break;
+                    case 6: tr = 3; rt = 1; break;
+                    default:
+                        logger_.log_warn("MARS: TDS value %u out of range", value);
+                        break;
+		}
+		globalstr_[chip].tr = tr;
+      		globalstr_[chip].rt = rt;
+		break;
+	    }
+            case MARS_FIELD_TDM:   globalstr_[chip].tm   = value; break;
+            case MARS_FIELD_TH:    globalstr_[chip].pa   = value; break;
+	    case MARS_FIELD_TPAMP: globalstr_[chip].pb   = value; break;
+            case MARS_FIELD_C:     globalstr_[chip].c    = value; break;
+            case MARS_FIELD_M0:    globalstr_[chip].m0   = value; break;
+            case MARS_FIELD_SAUX:  globalstr_[chip].saux = value; break;
             default:
                 logger_.log_warn("MARS: unknown global field_id %d", field_id);
                 break;
@@ -105,6 +193,9 @@ void Mars::set_channel_field( uint16_t channel
             case MARS_CH_PUTR:
                 channelstr_[ch].dp = value;
                 break;
+            case MARS_CH_SEL:
+                channelstr_[ch].sel = value ? 1 : 0;
+                break;
             default:
                 logger_.log_warn("MARS: unknown channel field_id %d", field_id);
                 break;
@@ -132,16 +223,41 @@ bool Mars::get_global_field( uint16_t chip
         case MARS_FIELD_ST:   value = g.ts;   return true;
         case MARS_FIELD_GAIN: value = g.g;    return true;
         case MARS_FIELD_POL:  value = g.sp;   return true;
-        case MARS_FIELD_EBLK: value = g.sl;   return true;
+        case MARS_FIELD_EBLK:
+            if ( g.sl )
+                value = 0;
+            else if ( g.slh )
+                value = 2;
+            else
+                value = 1;
+            return true;
+
         case MARS_FIELD_GMON: value = g.m1;   return true;
         case MARS_FIELD_PUEN: value = g.spur; return true;
         case MARS_FIELD_MFS:  value = g.sse;  return true;
         case MARS_FIELD_TDS:  value = g.tr;   return true;
-        case MARS_FIELD_TDM:  value = g.tm;   return true;
-        case MARS_FIELD_TH:   value = g.pa;   return true;
-        case MARS_FIELD_C:    value = g.c;    return true;
-        case MARS_FIELD_M0:   value = g.m0;   return true;
-        case MARS_FIELD_SAUX: value = g.saux; return true;
+            if ( g.rt == 0 )
+            {
+                value = g.tr & 0x3;
+                return true;
+            }
+      
+            switch ( g.tr & 0x3 )
+            {
+                case 1: value = 4; return true;
+                case 2: value = 5; return true;
+                case 3: value = 6; return true;
+                default:
+                    value = 0;
+                    return true;
+            }
+
+        case MARS_FIELD_TDM:   value = g.tm;   return true;
+        case MARS_FIELD_TH:    value = g.pa;   return true;
+        case MARS_FIELD_TPAMP: value = g.pb;   return true;
+        case MARS_FIELD_C:     value = g.c;    return true;
+        case MARS_FIELD_M0:    value = g.m0;   return true;
+        case MARS_FIELD_SAUX:  value = g.saux; return true;
         default:
             logger_.log_warn("MARS: unknown global field_id %d", field_id);
             return false;
@@ -169,6 +285,7 @@ bool Mars::get_channel_field( uint16_t channel
         case MARS_CH_TSEN: value = ch.st;         return true;
         case MARS_CH_THTR: value = ch.da;         return true;
         case MARS_CH_PUTR: value = ch.dp;         return true;
+	case MARS_CH_SEL:  value = ch.sel;        return true;
         default:
             logger_.log_warn("MARS: unknown channel field_id %d", field_id);
             return false;
@@ -187,13 +304,15 @@ void Mars::load( uint16_t chip_mask )
 
 uint32_t Mars::reverse_bits( int nbits, uint32_t num )
 {
-    uint32_t reversed = 0;
-    for ( int i = 0; i < nbits; i++ )
-    {
-        if ( num & (1 << i) )
-            reversed |= 1 << ( (nbits - 1) - i );
-    }
-    return reversed;
+    //uint32_t reversed = 0;
+    //for ( int i = 0; i < nbits; i++ )
+    //{
+    //    if ( num & (1 << i) )
+    //        reversed |= 1 << ( (nbits - 1) - i );
+    //}
+    //return reversed;
+    (void)nbits;
+    return num;
 }
 
 //===========================================================================//

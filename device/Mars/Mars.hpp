@@ -89,6 +89,7 @@ using GermaniumProtocol::MARS_FIELD_MFS;
 using GermaniumProtocol::MARS_FIELD_TDS;
 using GermaniumProtocol::MARS_FIELD_TDM;
 using GermaniumProtocol::MARS_FIELD_TH;
+using GermaniumProtocol::MARS_FIELD_TPAMP;
 using GermaniumProtocol::MARS_FIELD_C;
 using GermaniumProtocol::MARS_FIELD_M0;
 using GermaniumProtocol::MARS_FIELD_SAUX;
@@ -96,6 +97,7 @@ using GermaniumProtocol::MARS_CH_CHEN;
 using GermaniumProtocol::MARS_CH_TSEN;
 using GermaniumProtocol::MARS_CH_THTR;
 using GermaniumProtocol::MARS_CH_PUTR;
+using GermaniumProtocol::MARS_CH_SEL;
 
 //===========================================================================//
 
@@ -103,6 +105,8 @@ class Mars
 {
 public:
     explicit Mars( Register& reg, const Logger& logger );
+
+    void init_defaults();
 
     /**
      * @brief Set a global (per-chip) configuration field.

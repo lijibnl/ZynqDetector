@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 
 //===========================================================================//
 //  LTC2309 ADC channel control words
@@ -169,12 +170,13 @@ void GermaniumDetector::create_tasks_special()
                 {
                     ///< DAC7678 write: [0x30+ch, value_MSB, value_LSB]
                     uint8_t ch   = static_cast<uint8_t>(msg.addr & 0x07);
-                    uint16_t val = static_cast<uint16_t>(msg.value);
-                    uint8_t buf[3] = {
-                        static_cast<uint8_t>(0x30 + ch),
-                        static_cast<uint8_t>((val >> 8) & 0xFF),
-                        static_cast<uint8_t>(val & 0xFF)
-                    };
+                    uint16_t val = static_cast<uint16_t>(std::min<uint32_t>(msg.value, 4095));
+
+                    uint8_t buf[3] = { static_cast<uint8_t>(0x30 + ch)
+		                     , static_cast<uint8_t>((val & 0x0FF0) >> 4)
+				     , static_cast<uint8_t>((val & 0x000F) << 4)
+                                     };
+
                     i2c.write( DAC7678_ADDR, buf, 3 );
                     break;
                 }
@@ -278,20 +280,22 @@ void GermaniumDetector::init_adc_clk_skew()
 
 void GermaniumDetector::init_mars_defaults()
 {
-    ///< Set MARS defaults matching Mars_DDM + positive polarity
-    for ( int chip = 0; chip < 12; chip++ )
-    {
-        mars_->set_global_field( 1u << chip, MARS_FIELD_POL,  1 );  ///< positive
-        mars_->set_global_field( 1u << chip, MARS_FIELD_GAIN, 0 );  ///< gain 0
-        mars_->set_global_field( 1u << chip, MARS_FIELD_ST,   0 );  ///< shaping time 0
-        mars_->set_global_field( 1u << chip, MARS_FIELD_TH,  512 ); ///< mid-scale threshold
-    }
+    /////< Set MARS defaults matching Mars_DDM + positive polarity
+    //for ( int chip = 0; chip < 12; chip++ )
+    //{
+    //    mars_->set_global_field( 1u << chip, MARS_FIELD_POL,  1 );  ///< positive
+    //    mars_->set_global_field( 1u << chip, MARS_FIELD_GAIN, 0 );  ///< gain 0
+    //    mars_->set_global_field( 1u << chip, MARS_FIELD_ST,   0 );  ///< shaping time 0
+    //    mars_->set_global_field( 1u << chip, MARS_FIELD_TH,  512 ); ///< mid-scale threshold
+    //}
 
-    ///< Enable all channels, select shaper output
-    for ( int ch = 0; ch < 384; ch++ )
-    {
-        mars_->set_channel_field( ch, MARS_CH_CHEN, 1 );   ///< sm = 0 (enabled)
-    }
+    /////< Enable all channels, select shaper output
+    //for ( int ch = 0; ch < 384; ch++ )
+    //{
+    //    mars_->set_channel_field( ch, MARS_CH_CHEN, 1 );   ///< sm = 0 (enabled)
+    //}
+
+    mars_->init_defaults();
 
     mars_->load( 0xFFF );
     logger_.log_debug("GermaniumDetector: MARS defaults loaded");
