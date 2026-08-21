@@ -16,6 +16,7 @@
 
 #include <cstdio>
 #include <csignal>
+#include <iostream>
 
 #include "GermaniumDetector.hpp"
 
@@ -32,11 +33,24 @@ static void signal_handler( int /*sig*/ )
 
 //===========================================================================//
 
-int main()
+int main( int argc, char* argv[] )
 {
-    printf("GermaniumDetector starting...\n");
+    if ( argc != 2 )
+    {
+        std::cerr << "Usage: " << argv[0] << " <192|384>\n";
+	return 1;
+    }
 
-    GermaniumDetector det;
+    int nelm = std::atoi(argv[1]);
+        if ( nelm != 192 && nelm != 384 )
+        {
+	        std::fprintf(stderr, "Error: NELM must be 192 or 384\n");
+		    return 1;
+        }
+
+    std::cerr << "GermaniumDetector starting with NELM=" << nelm << "...\n";
+
+    GermaniumDetector det(nelm);
     g_det = &det;
 
     std::signal(SIGINT,  signal_handler);

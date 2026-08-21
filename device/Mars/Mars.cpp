@@ -22,12 +22,24 @@
 #include <cstring>
 #include <thread>
 #include <chrono>
+#include <iostream>
+#ifdef MARS_TEST
+#include <cerrno>
+#include <cstring>
+#include <sys/stat.h>
+#include <fstream>
+#endif
 
 //===========================================================================//
 
-Mars::Mars( Register& reg, const Logger& logger )
-    : reg_( reg )
-    , logger_( logger )
+Mars::Mars( Register&     reg
+          , const Logger& logger
+          , int           active_channels
+          )
+          : reg_             ( reg                                 )
+          , logger_          ( logger                              )
+          , active_channels_ ( active_channels                     )
+          , active_chips_    ( active_channels / CHANNELS_PER_CHIP )
 {
     std::memset( globalstr_,  0, sizeof(globalstr_)  );
     std::memset( channelstr_, 0, sizeof(channelstr_) );
@@ -36,44 +48,32 @@ Mars::Mars( Register& reg, const Logger& logger )
 
 //===========================================================================//
 
+uint16_t Mars::active_chip_mask() const
+{
+    return static_cast<uint16_t>((1u << active_chips_) - 1u);
+}
+
+//===========================================================================//
+
 void Mars::init_defaults()
 {
-    for ( int chip = 0; chip < MAX_NCHIPS; chip++ )
+    for ( int chip = 0; chip < active_chips_; chip++ )
     {
         globalstr_[chip].pa     = 380;
         globalstr_[chip].pb     = 102;
         globalstr_[chip].rm     = 1;
-        globalstr_[chip].senfl1 = 0;
         globalstr_[chip].senfl2 = 1;
-        globalstr_[chip].m0     = 0;
-        globalstr_[chip].m1     = 0;
         globalstr_[chip].sbn    = 1;
         globalstr_[chip].sb     = 1;
-        globalstr_[chip].sl     = 0;
-        globalstr_[chip].ts     = 1;
-        globalstr_[chip].rt     = 0;
-        globalstr_[chip].spur   = 0;
-        globalstr_[chip].sse    = 0;
-        globalstr_[chip].tr     = 0;
-        globalstr_[chip].ss     = 0;
-        globalstr_[chip].c      = 0;
-        globalstr_[chip].g      = 0;
-        globalstr_[chip].slh    = 0;
         globalstr_[chip].sp     = 1;
-        globalstr_[chip].saux   = 0;
         globalstr_[chip].sbm    = 1;
-        globalstr_[chip].tm     = 0;
     }
 
-    for ( int ch = 0; ch < MAX_CHANNELS; ch++ )
+    for ( int ch = 0; ch < active_channels_; ch++ )
     {
         channelstr_[ch].dp  = 7;
-        channelstr_[ch].nc1 = 0;
         channelstr_[ch].da  = 3;
         channelstr_[ch].sel = 1;
-        channelstr_[ch].nc2 = 0;
-        channelstr_[ch].sm  = 0;
-        channelstr_[ch].st  = 0;
     }
 }
 
@@ -84,7 +84,7 @@ void Mars::set_global_field( uint16_t chip_mask
                            , uint32_t value
                            )
 {
-    for ( int chip = 0; chip < MAX_NCHIPS; chip++ )
+    for ( int chip = 0; chip < active_chips_; chip++ )
     {
         if ( !(chip_mask & (1 << chip)) )
             continue;
@@ -92,7 +92,15 @@ void Mars::set_global_field( uint16_t chip_mask
         switch ( field_id )
         {
             case MARS_FIELD_ST:   globalstr_[chip].ts   = value; break;
-            case MARS_FIELD_GAIN: globalstr_[chip].g    = value; break;
+            case MARS_FIELD_GAIN:
+                logger_.log_warn("MARS TEST: set gain chip=%d old=%u new=%u chip_mask=0x%03x",
+                                 chip,
+                                 static_cast<unsigned>(globalstr_[chip].g),
+                                 static_cast<unsigned>(value),
+                                 chip_mask);
+
+                globalstr_[chip].g = value;
+                break;
             case MARS_FIELD_POL:  globalstr_[chip].sp   = value; break;
             case MARS_FIELD_EBLK:
                 switch ( value )
@@ -164,11 +172,11 @@ void Mars::set_channel_field( uint16_t channel
                             )
 {
     int start = 0;
-    int end   = MAX_CHANNELS;
+    int end   = active_channels_;
 
     if ( channel != 0xFFF )
     {
-        if ( channel >= MAX_CHANNELS )
+        if ( channel >= active_channels_ )
         {
             logger_.log_warn("MARS: channel %d out of range", channel);
             return;
@@ -210,7 +218,7 @@ bool Mars::get_global_field( uint16_t chip
                            , uint32_t& value
                            ) const
 {
-    if ( chip >= MAX_NCHIPS )
+    if ( chip >= active_chips_ )
     {
         logger_.log_warn("MARS: chip %d out of range", chip);
         return false;
@@ -271,7 +279,7 @@ bool Mars::get_channel_field( uint16_t channel
                             , uint32_t& value
                             ) const
 {
-    if ( channel >= MAX_CHANNELS )
+    if ( channel >= active_channels_ )
     {
         logger_.log_warn("MARS: channel %d out of range", channel);
         return false;
@@ -285,7 +293,7 @@ bool Mars::get_channel_field( uint16_t channel
         case MARS_CH_TSEN: value = ch.st;         return true;
         case MARS_CH_THTR: value = ch.da;         return true;
         case MARS_CH_PUTR: value = ch.dp;         return true;
-	case MARS_CH_SEL:  value = ch.sel;        return true;
+    	case MARS_CH_SEL:  value = ch.sel;        return true;
         default:
             logger_.log_warn("MARS: unknown channel field_id %d", field_id);
             return false;
@@ -296,9 +304,119 @@ bool Mars::get_channel_field( uint16_t channel
 
 void Mars::load( uint16_t chip_mask )
 {
+    chip_mask &= active_chip_mask();
+    
+    if ( chip_mask == 0 )
+    {
+        logger_.log_warn("MARS: load requested with no active chips");
+        return;
+    }
+
     wrap();
+
+#ifdef MARS_TEST
+    test_dump_file();
+#endif
+
     stuff_mars( chip_mask );
 }
+
+//===========================================================================//
+// Test MARS driver.
+
+#ifdef MARS_TEST
+
+int Mars::test_dump_file( void )
+{
+    static const char* path = "/tmp/mars-test/mars_zynq_dump.csv";
+    static bool dir_created = false;
+
+    std::cerr << __func__ << ": dumping MARS configuration file...\n";
+
+    if ( !dir_created )
+    {
+        if ( (mkdir("/tmp/mars-test", 0775) == -1) &&
+	     ( errno != EEXIST) )
+	{
+	    std::cerr << __func__ << ": failed to create /tmp/mars-test\n";
+            return -1;
+	}
+	dir_created = true;
+    }
+
+    std::ofstream fp(path);
+    if ( !fp.is_open() )
+    {
+        std::printf("MARS_TEST_ERROR cannot open %s\n", path);
+        return -1;
+    }
+
+    fp << "TYPE,INDEX,CHIP,CHN,FIELD,VALUE\n";
+
+    for ( int chip = 0; chip < active_chips_; chip++ )
+    {
+        const chipstr& g = globalstr_[chip];
+
+        fp << "GLOBAL," << chip << "," << chip << ",,pa," << g.pa << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,pb," << g.pb << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,rm," << static_cast<unsigned>(g.rm) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,senfl1," << static_cast<unsigned>(g.senfl1) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,senfl2," << static_cast<unsigned>(g.senfl2) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,m0," << static_cast<unsigned>(g.m0) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,m1," << static_cast<unsigned>(g.m1) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,sbn," << static_cast<unsigned>(g.sbn) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,sb," << static_cast<unsigned>(g.sb) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,sl," << static_cast<unsigned>(g.sl) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,ts," << static_cast<unsigned>(g.ts) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,rt," << static_cast<unsigned>(g.rt) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,spur," << static_cast<unsigned>(g.spur) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,sse," << static_cast<unsigned>(g.sse) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,tr," << static_cast<unsigned>(g.tr) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,ss," << static_cast<unsigned>(g.ss) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,c," << static_cast<unsigned>(g.c) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,g," << static_cast<unsigned>(g.g) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,slh," << static_cast<unsigned>(g.slh) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,sp," << static_cast<unsigned>(g.sp) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,saux," << static_cast<unsigned>(g.saux) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,sbm," << static_cast<unsigned>(g.sbm) << "\n";
+        fp << "GLOBAL," << chip << "," << chip << ",,tm," << static_cast<unsigned>(g.tm) << "\n";
+    }
+
+    for ( int channel = 0; channel < active_channels_; channel++ )
+    {
+        const chanstr& c = channelstr_[channel];
+        int chip = channel / CHANNELS_PER_CHIP;
+        int chn  = channel % CHANNELS_PER_CHIP;
+
+        fp << "CHANNEL," << channel << "," << chip << "," << chn << ",dp," << static_cast<unsigned>(c.dp) << "\n";
+        fp << "CHANNEL," << channel << "," << chip << "," << chn << ",nc1," << static_cast<unsigned>(c.nc1) << "\n";
+        fp << "CHANNEL," << channel << "," << chip << "," << chn << ",da," << static_cast<unsigned>(c.da) << "\n";
+        fp << "CHANNEL," << channel << "," << chip << "," << chn << ",sel," << static_cast<unsigned>(c.sel) << "\n";
+        fp << "CHANNEL," << channel << "," << chip << "," << chn << ",nc2," << static_cast<unsigned>(c.nc2) << "\n";
+        fp << "CHANNEL," << channel << "," << chip << "," << chn << ",sm," << static_cast<unsigned>(c.sm) << "\n";
+        fp << "CHANNEL," << channel << "," << chip << "," << chn << ",st," << static_cast<unsigned>(c.st) << "\n";
+    }
+
+    std::ios_base::fmtflags flags = fp.flags();
+
+    for ( int chip = 0; chip < active_chips_; chip++ )
+    {
+        for ( int word = 0; word < 14; word++ )
+        {
+            fp << "LOAD," << chip << "," << chip << ",,word" << word << ",";
+            fp << std::hex << std::nouppercase;
+            fp.width(8);
+            fp.fill('0');
+            fp << loads_[chip][word];
+            fp.flags(flags);
+            fp << "\n";
+        }
+    }
+
+    return 0;
+}
+
+#endif
 
 //===========================================================================//
 
@@ -352,7 +470,7 @@ private:
 
 void Mars::wrap()
 {
-    for ( int chip = 0; chip < MAX_NCHIPS; chip++ )
+    for ( int chip = 0; chip < active_chips_; chip++ )
     {
         BitPacker bp( loads_[chip] );
         const chipstr& g = globalstr_[chip];
@@ -418,7 +536,7 @@ void Mars::wrap()
 
 void Mars::stuff_mars( uint16_t chip_mask )
 {
-    for ( int i = 0; i < MAX_NCHIPS; i++ )
+    for ( int i = 0; i < active_chips_; i++ )
     {
         if ( !(chip_mask & (1 << i)) )
             continue;

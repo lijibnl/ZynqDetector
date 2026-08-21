@@ -37,7 +37,7 @@ class GermaniumDetector : public ZynqDevice< GermaniumDetector
                                            >
 {
 public:
-    GermaniumDetector();
+    explicit GermaniumDetector( int nelm );
 
     /**
      * @brief CRTP hook — no additional queues needed.
@@ -63,6 +63,9 @@ public:
     void dispatch_command( const GermaniumProtocol::Message& msg );
 
 private:
+    int active_channels_;
+    int active_chips_;
+
     std::unique_ptr<Mars>    mars_;
 
     ///< Per-bus async workers

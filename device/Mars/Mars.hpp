@@ -104,7 +104,10 @@ using GermaniumProtocol::MARS_CH_SEL;
 class Mars
 {
 public:
-    explicit Mars( Register& reg, const Logger& logger );
+    explicit Mars( Register& reg
+                 , const Logger& logger
+                 , int active_channels
+                 );
 
     void init_defaults();
 
@@ -160,7 +163,14 @@ public:
      */
     void load( uint16_t chip_mask );
 
+#ifdef MARS_TEST
+    int test_dump_file(void); 
+#endif
+
 private:
+
+    const int active_channels_;
+    const int active_chips_;
 
     Register& reg_;
     const Logger& logger_;
@@ -169,6 +179,7 @@ private:
     chanstr  channelstr_[MAX_CHANNELS];
     uint32_t loads_     [MAX_NCHIPS][14];
 
+    uint16_t active_chip_mask() const;
     static uint32_t reverse_bits( int nbits, uint32_t num );
 
     /**

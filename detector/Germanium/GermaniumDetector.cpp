@@ -40,11 +40,13 @@ static constexpr uint8_t LTC2309_ADDR = 0x08;   ///< I2C slave address
 
 //===========================================================================//
 
-GermaniumDetector::GermaniumDetector()
+GermaniumDetector::GermaniumDetector( int nelm )
     : ZynqDevice< GermaniumDetector
                 , GermaniumZMQ
                 , GermaniumZynq
                 >()
+    , active_channels_( nelm      )
+    , active_chips_   ( nelm / 32 )
 {
     printf("GermaniumDetector: initialization started...\n");
 
@@ -80,7 +82,10 @@ void GermaniumDetector::create_components_special()
     auto n = std::make_unique<GermaniumZMQ>( this->logger_ );
     this->set_network( std::move(n) );
 
-    mars_ = std::make_unique<Mars>( this->zynq_->reg(), this->logger_ );
+    mars_ = std::make_unique<Mars>( this->zynq_->reg()
+                                  , this->logger_
+                                  , active_channels_
+                                  );
 }
 
 //===========================================================================//
@@ -297,7 +302,8 @@ void GermaniumDetector::init_mars_defaults()
 
     mars_->init_defaults();
 
-    mars_->load( 0xFFF );
+    uint16_t chip_mask = static_cast<uint16_t>((1u << active_chips_) - 1u);
+    mars_->load( chip_mask );
     logger_.log_debug("GermaniumDetector: MARS defaults loaded");
 }
 
@@ -320,6 +326,7 @@ void GermaniumDetector::dispatch_command( const GermaniumProtocol::Message& msg 
             uint16_t chip_mask = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
             uint16_t field_id  = static_cast<uint16_t>( msg.addr & 0xFFFF );
             mars_->set_global_field( chip_mask, field_id, msg.value );
+
             network_->tx_reply( msg );  ///< echo back
             break;
         }
@@ -350,6 +357,7 @@ void GermaniumDetector::dispatch_command( const GermaniumProtocol::Message& msg 
             uint16_t channel  = static_cast<uint16_t>( (msg.addr >> 16) & 0xFFF );
             uint16_t field_id = static_cast<uint16_t>( msg.addr & 0xFFFF );
             mars_->set_channel_field( channel, field_id, msg.value );
+
             network_->tx_reply( msg );  ///< echo back
             break;
         }
